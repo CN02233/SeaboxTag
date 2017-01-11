@@ -1,0 +1,62 @@
+package com.evergrande.hdmp.usertags.hbase;
+
+import com.evergrande.hdmp.usertags.hbase.entity.TSmsReplyTrack;
+import com.evergrande.hdmp.usertags.utils.SingletonBean;
+import com.evergrande.hdmp.usertags.hbase.entity.TCampInfo;
+import com.evergrande.hdmp.usertags.hbase.entity.TSmsAction;
+import com.evergrande.hdmp.usertags.hbase.entity.TUserInfo;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/18/16,12:48 PM
+ */
+@SingletonBean
+public class HBaseConnectionMgr {
+
+    private static final Logger logger = LoggerFactory.getLogger(HBaseConnectionMgr.class);
+
+    private Configuration conf;
+
+    public HBaseConnectionMgr() {
+
+    }
+
+
+    @PostConstruct
+    public void init() throws IOException{
+
+        conf = HBaseConfiguration.create();
+
+        //ClassLoader cl = ContextLoader.getCurrentWebApplicationContext().getClassLoader();
+        //URL url = cl.getSystemResource("/hbase-site.xml");
+        //conf.addResource(url);
+
+        Connection connection = ConnectionFactory.createConnection(conf);
+
+        TCampInfo.createTableIfMissing(connection);
+        TUserInfo.createTableIfMissing(connection);
+        TSmsAction.createTableIfMissing(connection);
+        TSmsReplyTrack.createTableIfMissing(connection);
+
+    }
+
+
+    public Connection   getConnection() throws IOException{
+        Connection connection = ConnectionFactory.createConnection(conf);
+        return connection;
+    }
+
+
+
+
+
+
+}

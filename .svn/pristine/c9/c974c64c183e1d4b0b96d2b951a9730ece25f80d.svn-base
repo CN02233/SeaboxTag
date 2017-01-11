@@ -1,0 +1,116 @@
+/*
+###############for user admin ############################################################
+ */
+
+/* 用户 ID */
+.td_user_id {
+	width: 70px;
+}
+
+/* 用户名 */
+.td_user_name {
+	width: 130px;
+}
+
+/* 创建时间 & 修改时间  */
+.td_user_date_and_time {
+	width: 160px;
+}
+
+/* 所在组 */
+.td_user_in_group {
+	width: 210px;
+}
+
+/* 真实姓名   */
+.td_user_realname {
+	width: 100px;
+}
+
+/* 创建者  */
+.td_user_creator {
+	width: 110px;
+}
+
+/* 修改者  */
+.td_user_modifier {
+	width: 110px;
+}
+
+/* 操作 */
+.td_user_operation {
+	width: 150px;
+}
+
+/*
+###############for user groups admin ############################################################
+ */
+
+/* 用户组 ID */
+.td_group_id {
+	width: 70px;
+}
+
+/* 用户组名 */
+.td_group_name {
+	width: 210px;
+}
+
+/* 创建时间 & 修改时间  */
+.td_group_date_and_time {
+	width: 160px;
+}
+
+/* 组用户 */
+.td_group_have_users {
+	width: 120px;
+}
+
+/* 活动管理员   */
+.td_group_admin {
+	width: 110px;
+}
+
+/* 创建者  */
+.td_group_creator {
+	width: 110px;
+}
+
+/* 修改者  */
+.td_group_modifier {
+	width: 110px;
+}
+
+/* 操作 */
+.td_group_operation {
+	width: 150px;
+}
+
+/*
+###############for log admin ############################################################
+ */
+
+/* 事件ID */
+.td_log_id {
+	width: 100px;
+}
+
+/* 事件类型 */
+.td_log_type {
+	width: 150px;
+}
+
+/* 时间 */
+.td_log_time {
+	width: 400px;
+}
+
+/* 用户真实姓名 */
+.td_log_username {
+	width: 250px;
+}
+
+/* IP */
+.td_log_ip {
+	width: 300px;
+}

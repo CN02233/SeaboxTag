@@ -1,0 +1,177 @@
+
+.hover-color:hover {
+    background-color: #30B8B8;
+    -moz-box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    -webkit-box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    border-radius: 4px;
+}
+.hover-color:active{
+    background-color: #30B8B8;
+    -moz-box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    -webkit-box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    box-shadow:inset 0 0 3px rgba(239,243,246,2);
+    border-radius: 4px;
+}
+
+.sprite-img,
+.sprite-img-first,
+.sprite-img-second,
+.sprite-img-thd,
+.sprite-img-foth,
+.sprite-img-fith,
+.sprite-img-six
+{
+    background: url(/SeaBoxTag/images/main/sprite_label.png) no-repeat;
+}
+
+.sprite-img-first {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+
+
+.sprite-img-second {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 18px;
+    height: 19px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+.sprite-img-thd {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+.sprite-img-foth {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+.sprite-img-fith {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+
+.sprite-img-six {
+    display: -moz-inline-box;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding: 0;
+    text-align: center;
+    cursor: pointer;
+}
+
+.first_line{
+    border-bottom:1px dashed #AFB0E3;
+    float:left;
+    width:100%;
+}
+
+.logo_div{
+    width:45%;
+    float:left;
+    margin-left: 5%;
+    border:0px solid red;
+}
+
+.help_div{
+    width:45%;
+    float:left;
+    border:0px solid red;
+}
+
+.help_div>ol{
+    text-align: right;
+    background-color:white;
+    padding-top:25px;
+    padding-bottom: 0px;
+}
+.help_div>ol>li>font{
+    margin-left:10px;
+    margin-right:10px;
+}
+
+.menu_nav{
+    width:90%;margin-left:5%;float:left;border:0px solid blue;
+    border-top:0px solid #AFB0E3;
+    border-left:0px solid #AFB0E3;
+    border-right:0px solid #AFB0E3;
+    background-color:white;
+}
+
+.menu_font{
+    color:black;
+    font-size:16px;
+    font-weight: bold;
+}
+
+.person_center{
+    text-align: center;
+    width:160px;
+    border-top:0px dashed #AFB0E3;
+    border-left:1px dashed #AFB0E3;
+    border-right:1px dashed #AFB0E3;
+    border-bottom:0px solid red;
+    box-shadow:0px 0px 10px rgba(172,198,241,10);
+}
+
+.main_page_div {
+    border-bottom:1px solid red;
+    width:100%;
+    float:left;
+    background-color:#eff3f6;
+    border-top:3px solid #BEB8EF;
+}
+
+.main_page_iframe {
+    width:90%;
+    margin-left:5%;
+}
+
+.dropdown-menu>li{
+    text-align: center;
+}
+
+.logout_btn{
+    cursor:pointer;
+
+}

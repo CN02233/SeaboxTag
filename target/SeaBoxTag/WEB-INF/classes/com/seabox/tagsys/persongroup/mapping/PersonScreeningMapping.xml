@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="prnScreening" >
+
+    <select id="listTagCtgy" resultType="hashmap">
+        select
+          a.tag_ctgy_id tagId,
+          a.tag_ctgy_nm tagNm,
+		  IF(up_tag_ctgy_id is not NULL and up_tag_ctgy_id!='',a.up_tag_ctgy_id,'rootTag') parTagId
+		from h50_tag_category_info a
+        where a.tag_ctgy_status=2
+        order by a.up_tag_ctgy_id ,a.tag_ctgy_id
+    </select>
+
+    <select id="listTags" resultType="hashmap">
+        select
+          ti.tag_id tagId,
+          ti.tag_nm tagNm,
+          ti.tag_ctgy_id parTagId
+          from h50_tag_info ti, h50_tag_category_info cti
+          where ti.active_ind=1 and (ti.enabled_dt <![CDATA[<= ]]> curdate()
+                and ti.disabled_dt <![CDATA[>= ]]> curdate())
+                and ti.tag_ctgy_id = cti.tag_ctgy_id and cti.tag_ctgy_status=2
+
+    </select>
+
+    <select id="listAllScreening" resultType="hashmap">
+         select infoRest.*,
+                stats.camp_status_nm statsNm,
+                user.user_real_nm userNm
+                from
+              (select
+              camp_id screeningId,
+              camp_nm screeningNm,
+              camp_desc screeningDes,
+--               created_ts createTs,
+              date_format(created_ts,'%Y-%m-%d %H:%i') createTs,
+              updated_ts updateTs,
+              user_id userId,
+              camp_status_cd status_cd
+             from h62_campaign_info
+             limit #{beginIndex}, #{pageSize}) infoRest
+         left join h62_campaign_status stats on infoRest.status_cd = stats.camp_status_cd
+         inner join h62_sys_user user on infoRest.userId = user.user_id
+         order by screeningId
+    </select>
+
+    <select id="cntAllScreening" resultType="int">
+      select count(0) from h62_campaign_info
+    </select>
+
+    <insert id="saveScreening" >
+        insert into h62_campaign_info (camp_id,
+        camp_nm,
+        start_dt,
+        end_dt,
+        indv_num,
+        camp_chnl_cd,
+        camp_status_cd ,
+        user_id,
+        created_ts,
+        updated_ts) values
+        (#{camp_id},
+        #{camp_nm},
+        current_timestamp(),
+        current_timestamp(),
+        #{indv_num},
+        #{camp_chnl_cd},
+        '01',
+        #{user_id},
+        current_timestamp(),
+        current_timestamp())
+    </insert>
+
+    <insert id="updateScreening">
+        update h62_campaign_info set updated_ts = current_timestamp() ,user_id = #{user_id}
+        where camp_id = #{screeningId}
+    </insert>
+
+    <insert id="saveScreeningTags">
+        insert into h62_campaign_tag_rela (camp_id,tag_group_seq,tag_id,tag_ctgy_id,created_ts,updated_ts)
+        values (#{camp_id},#{tag_group_seq},#{tag_id},#{tag_ctgy_id},current_timestamp(),current_timestamp())
+    </insert>
+
+    <select id="getScreeningId" resultType="int">
+        SELECT NEXTVAL('camp_seq');
+    </select>
+
+    <select id="getScreeningObj" resultType="hashmap">
+        select
+          camp_id screeingId,
+          camp_nm screeningNm
+         from h62_campaign_info where camp_id = #{screeningId}
+    </select>
+
+    <select id="getScreeningTags" resultType="hashmap">
+        SELECT
+            ctr.camp_id screeningId,
+            ctr.tag_group_seq grpSeq,
+            ctr.tag_id tagId,
+            ctr.tag_ctgy_id tagCtgyId,
+            tci.tag_ctgy_nm tagCtgyNm,
+            ti.tag_nm tagNm
+        FROM (select * from h62_campaign_tag_rela  where camp_id=#{screeningId}) ctr
+        inner join h50_tag_category_info tci on ctr.tag_ctgy_id = tci.tag_ctgy_id
+        inner join h50_tag_info ti on ctr.tag_id = ti.tag_id;
+    </select>
+
+    <update id="rmOldTagGrps">
+        DELETE FROM h62_campaign_tag_rela where camp_id = ${screeningId}
+    </update>
+
+    <insert id="moveToDelTb">
+        insert into h62_campaign_info_del (camp_id,camp_nm,camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,camp_status_cd,user_id,created_ts,updated_ts,del_ind)
+        select camp_id,camp_nm,camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,camp_status_cd,user_id,created_ts,updated_ts,'0' from h62_campaign_info where camp_id=#{screeningId}
+    </insert>
+    <delete id="delScreeningData">
+        delete from h62_campaign_info where camp_id=#{screeningId}
+    </delete>
+
+
+</mapper>

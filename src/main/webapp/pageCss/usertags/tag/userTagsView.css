@@ -1,0 +1,69 @@
+@CHARSET "UTF-8";
+
+
+/*
+.div_tag_favo_icon,
+.div_tag_cover_mini_chart,
+*/
+
+.div_debug_lines {
+    border-width: 1px;
+    border-style: solid;
+    border-color: blue;
+}
+
+
+.div_tag_cover_mini_chart {
+    float:left;
+    padding-left: 13px;
+    padding-right: 3px;
+    height:100%;
+}
+
+
+.div_tag_favo_icon {
+    float:left;
+    padding-left: 3px;
+    padding-right: 3px;
+    height:100%;
+}
+
+
+
+.order-img-label{
+    border:0px solid blue;
+    color:black;
+    margin-left:3px;
+}
+
+.ordered-table-header-span {
+    border:0px solid red;
+    color:black;
+    font-weight:bold;
+    margin-bottom:0px;
+}
+
+.input_lable{
+    background: url(/SeaBoxTag/images/searchImg.png) no-repeat;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    position: absolute;
+    margin-top:32px;
+    margin-left:22%;
+    top: 0;
+}
+
+
+
+.tag-icon-favo-yes {
+	background-position:-31px -2px;
+}
+
+.tag-icon-favo-no {
+	background-position:-56px -2px;
+}
+
+.tag-icon-coverage {
+	background-position: -6px -2px;
+}

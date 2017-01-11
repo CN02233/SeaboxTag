@@ -1,0 +1,215 @@
+package com.evergrande.hdmp.usertags.hbase;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 1/14/16,10:00 AM
+ */
+
+
+import com.evergrande.hdmp.usertags.hbase.entity.TCampInfo;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+
+@Ignore
+public class HBaseTest {
+
+    private static Connection connection;
+
+    private final static TableName tableName = TableName.valueOf("two_table___HBaseTest_unit_test");
+
+    private static final Logger logger = LoggerFactory.getLogger(HBaseUtil.class);
+
+    @BeforeClass
+    public static void setup() throws IOException {
+
+        Configuration conf = HBaseConfiguration.create();
+        URL url = ClassLoader.getSystemResource("usertags/hbase-site.xml");
+        conf.addResource(url);
+
+        connection = ConnectionFactory.createConnection(conf);
+
+        Admin admin = connection.getAdmin();
+
+
+        HTableDescriptor desc = new HTableDescriptor(tableName);
+
+        desc.addFamily(new HColumnDescriptor("colFamily_1"));
+        desc.addFamily(new HColumnDescriptor("colFamily_2"));
+
+        desc.addFamily(new HColumnDescriptor("userList"));
+        desc.addFamily(new HColumnDescriptor("sendUserList"));
+
+        if(!admin.tableExists(tableName)) {
+            admin.createTable(desc);
+            logger.debug("\n ### now create new table: {} \n", tableName);
+        } else {
+            logger.debug("\n ###  {} table already exists,  now trying to delete it! \n", tableName);
+            admin.disableTable(tableName);
+            admin.deleteTable(tableName);
+
+            admin.createTable(desc);
+            logger.debug("\n ### now re-create table: {} \n", tableName);
+        }
+
+    }
+
+
+
+    @Test
+    public void testLoadLocalHBase() throws IOException {
+
+        Table hTable = connection.getTable(tableName);
+
+
+        String rowKey = "row_1";
+        Put put = new Put(Bytes.toBytes(rowKey));
+        put.addColumn("colFamily_1".getBytes(), "Person".getBytes(), "Male".getBytes());
+        put.addColumn("colFamily_1".getBytes(), "Age".getBytes(), "10~20 year old".getBytes());
+
+        put.addColumn("colFamily_2".getBytes(), "room".getBytes(), "1024".getBytes());
+        put.addColumn("colFamily_2".getBytes(), "area".getBytes(), "Guang Zhou".getBytes());
+        hTable.put(put);
+
+        Get get = new Get(Bytes.toBytes(rowKey));
+        get.addColumn("colFamily_1".getBytes(), "Person".getBytes());
+        get.addColumn("colFamily_1".getBytes(), "Age".getBytes());
+
+        get.addColumn("colFamily_2".getBytes(), "room".getBytes());
+        get.addColumn("colFamily_2".getBytes(), "area".getBytes());
+        Result result = hTable.get(get);
+        byte[] v1 = result.getValue("colFamily_1".getBytes(), "Person".getBytes());
+        byte[] v2 = result.getValue("colFamily_1".getBytes(), "Age".getBytes());
+
+        byte[] v3 = result.getValue("colFamily_2".getBytes(), "room".getBytes());
+        byte[] v4 = result.getValue("colFamily_2".getBytes(), "area".getBytes());
+
+        logger.debug("\n ###  row matching\n cf1: Person= {},  Age = {} \n cf2:  room={}, area= {}\n",
+                Bytes.toString(v1),
+                Bytes.toString(v2),
+                Bytes.toString(v3),
+                Bytes.toString(v4)
+        );
+
+
+        Get get11 = new Get( rowKey.getBytes() );
+        get11.addFamily( "colFamily_1".getBytes() );
+
+        try {
+            Result result1 = hTable.get( get11 );
+            CellScanner cellScanner =  result1.cellScanner();
+            while ( cellScanner.advance() ) {
+                Cell cell = cellScanner.current();
+                KeyValue keyValue = (KeyValue)cell;
+
+                String columnName = new String(  cell.getQualifierArray(), cell.getQualifierOffset(),  cell.getQualifierLength() );
+                String value = new String( cell.getValueArray(), cell.getValueOffset(), cell.getValueLength() );
+                logger.debug(" columnName={}, value ={},  cell = {} \n", columnName, value, cell);
+            }
+        } catch (IOException e) {
+
+        }
+
+        connection.close();
+
+
+
+
+    }
+
+
+    @Test
+    public void testMoveColumnDuringScan() throws IOException {
+
+        logger.debug("========= start init data in HBase ========");
+        String rowKey = "row_campID:1";
+        Put put = new Put(Bytes.toBytes(rowKey));
+
+        final  int totalAmount = 30000;
+        for(int i=0; i<totalAmount; ++i) {
+            put.addColumn("userList".getBytes(), ("userId:" + i).getBytes(), ("mobile:xxxx" + i).getBytes());
+        }
+
+        Table hTable = connection.getTable(tableName);
+        hTable.put(put);
+
+        hTable.close(); // force to flush DB
+        logger.debug("========= Done init test data in HBase ========");
+
+        Get get = new Get( rowKey.getBytes() );
+        get.addFamily( "userList".getBytes() );
+
+        Result result = hTable.get( get );
+        CellScanner cellScanner =  result.cellScanner();
+
+        logger.debug("========= Begin moving cells in HBase ========");
+
+
+        int nCount = 0;
+        while ( cellScanner.advance() ) {
+
+            Cell cell = cellScanner.current();
+
+            if(nCount%3 ==0 || nCount%3 ==1) {
+                String userId = new String(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+                String mobile = new String(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+
+                HBaseUtil.moveOrRenameAColumn(hTable, rowKey.getBytes(), mobile.getBytes(),
+                        "userList".getBytes(), userId.getBytes(),
+                        "sendUserList".getBytes(), userId.getBytes() );
+            }
+
+            ++ nCount;
+        }
+        hTable.close(); // force to flush DB
+        logger.debug("========= Done moving cells in HBase ========");
+
+        Assert.assertTrue( nCount == totalAmount );
+
+        //=====================
+
+        Get getSend = new Get( rowKey.getBytes() );
+        getSend.addFamily( "sendUserList".getBytes() );
+
+        Result resultSend = hTable.get( getSend );
+        CellScanner cellScannerSend =  resultSend.cellScanner();
+
+        logger.debug("========= Begin scan new cells in HBase ========");
+
+
+        int nCountSend = 0;
+        while ( cellScannerSend.advance() ) {
+
+            Cell cell = cellScannerSend.current();
+
+            String userId = new String(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+            String mobile = new String(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+
+            ++ nCountSend;
+        }
+
+        logger.debug("========= Done scan new cells in HBase ========");
+
+
+        Assert.assertTrue( nCountSend == 2 * totalAmount/3 );
+
+
+        hTable.close();
+
+    }
+
+}

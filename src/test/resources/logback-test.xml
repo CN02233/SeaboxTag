@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<property name="app_name" value="grande-hdmp-web"/>
+	<contextName>${app_name}</contextName>
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger %msg%n</pattern>
+		</encoder>
+	</appender>
+
+	
+	<logger name="com.seabox" level="debug"/>
+	<logger name="org.apache.ibatis" level="debug" />
+	<logger name="java.sql.Connection" level="debug" />
+	<logger name="java.sql.PreparedStatement" level="debug" />
+	
+	<root level="warn">
+		<appender-ref ref="STDOUT" />
+	</root>
+</configuration>

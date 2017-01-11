@@ -1,0 +1,467 @@
+package com.evergrande.hdmp.usertags.hbase;
+
+import com.evergrande.hdmp.usertags.action.CampaignActionStatus;
+import com.evergrande.hdmp.usertags.action.job.HealthStatsInstance;
+import com.evergrande.hdmp.usertags.action.job.engine.SmsTaskControl;
+import com.evergrande.hdmp.usertags.hbase.entity.*;
+import com.evergrande.hdmp.usertags.action.sms.RespMsgSmsSend;
+import com.evergrande.hdmp.usertags.action.sms.SmsAction;
+import com.evergrande.hdmp.usertags.action.sms.TemplatePara;
+import com.evergrande.hdmp.usertags.entity.CampInfo;
+import com.evergrande.hdmp.usertags.service.impl.CacheServiceRedisImpl;
+import com.evergrande.hdmp.usertags.utils.UserTagUtils;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.client.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.BitOP;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+
+import java.io.IOException;
+import java.util.*;
+
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/15/16,4:49 PM
+ */
+
+
+
+//hBase :
+        /*
+        campId,
+        n-2-GUID  mapping
+        result bitSet  ==>  n of  each Users.
+        get GUID
+        get Mobile-No
+        Store the condition as Json.
+
+
+        Table:n-2-GUID-mapping
+        version,         n-2-GUID-mapping
+
+        Table:Campaign-result
+        campID, tagCondition, userBitSet,  n-2-GUID-mapping-version
+
+        campID, tagCondition, numOfUsers, status(SAVE -> ACTION -> DONE),   +  GUID-01 : mobile, status;  GUID-02 : mobile, status
+
+        //MultipleColumnPrefixFilter
+
+
+
+
+campID + Seq,
+
+
+guid:1121
+
+
+guid:2q23
+
+seq:0123
+
+
+campID1:mobileID:  todo:0, send:1, recv:1, ack:0
+
+         */
+
+
+public class CampaignActionStoreHBaseImpl implements CampaignActionStore, HealthStatsInstance {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(CampaignActionStoreHBaseImpl.class);
+
+
+    private String  campID;
+
+    private Table  userInfoTable;
+    private Table  smsActionTable;
+    private Table  campInfoTable;
+    private Table  smsReplyTrackTable;
+
+    private Jedis optionalJedis;
+
+
+    public static CampaignActionStoreHBaseImpl createInstance(String  campID, Connection   hBaseCon) {
+
+        CampaignActionStoreHBaseImpl instance = null;
+        try {
+            instance = new CampaignActionStoreHBaseImpl(campID, hBaseCon);
+        } catch (IOException e) {
+            logger.error("failed to open related hBase tables, detail exception: ", e);
+        }
+
+        return instance;
+    }
+
+    public static CampaignActionStoreHBaseImpl createInstance(String  campID, Connection   hBaseCon,  Jedis jedis) {
+
+        CampaignActionStoreHBaseImpl instance = null;
+        try {
+            instance = new CampaignActionStoreHBaseImpl(campID, hBaseCon);
+            instance.optionalJedis = jedis;
+        } catch (IOException e) {
+            logger.error("failed to open related hBase tables, detail exception: ", e);
+        }
+
+        return instance;
+    }
+
+    /**
+     * Constructor
+     * @param campID
+     */
+    public CampaignActionStoreHBaseImpl(String  campID, Connection   hBaseCon) throws IOException{
+        this.campID = campID;
+
+        campInfoTable =  hBaseCon.getTable(  TCampInfo.tableName() );
+        userInfoTable =  hBaseCon.getTable(  TUserInfo.tableName() );
+        smsActionTable = hBaseCon.getTable(  TSmsAction.tableName() );
+        smsReplyTrackTable = hBaseCon.getTable( TSmsReplyTrack.tableName() );
+
+    }
+
+
+
+
+
+
+    @Override
+    public void close()  {
+        flushDB();
+    }
+
+    public void flushDB() {
+        try {
+            userInfoTable.close();
+            smsActionTable.close();
+            campInfoTable.close();
+            smsReplyTrackTable.close();
+        } catch (IOException e) {
+            logger.error("close hbase tables failed, detail exception: ", e);
+        }
+    }
+
+
+    public CampSmsActionStaticsImpl getCampSmsActionStatics() {
+
+        return TCampInfo.getCampSmsActionStatics( campInfoTable, campID );
+
+    }
+
+
+    @Override
+    public void saveCampaignInfo(String campUsersKeyInRedis, byte[] redisBitSet, String tagConditionJson, long numOfUsers) {
+
+        logger.info("saveCampaignInfo() start  for campId: {}", campID);
+
+        try {
+            TCampInfo.createOneNewRecord(campInfoTable, campID, campUsersKeyInRedis, redisBitSet, tagConditionJson, numOfUsers);
+
+            updateCampActionDetailStatus( CampaignActionStatus.PREPARE );
+            logger.info("saveCampaignInfo() complete  for campId: {}", campID);
+
+        } catch (IOException e) {
+            logger.error("saveCampaignInfo() Failed  for campId: " + campID + " detail exception:", e);
+        }
+
+    }
+
+    @Override
+    public boolean addUserToCampaignAction(String userGUID, final Set<String> excludeUsers) {
+
+        try {
+            TCampInfo.addUser( campInfoTable, userInfoTable, smsActionTable, campID, userGUID, excludeUsers);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+
+    }
+
+    @Override
+    public TCampInfo findOneCampInfoRecord(String campId) {
+        TCampInfo campInfoRecord = TCampInfo.findById( campInfoTable, campId);
+        return campInfoRecord;
+    }
+
+
+    @Override
+    public void updateCampActionDetailStatus(CampaignActionStatus actionStatus) {
+
+        try {
+
+            String rowKey = String.valueOf(campID);
+            Put put = new Put( rowKey.getBytes() );
+
+            // status -> Ready
+            put.addColumn(TCampInfo.ColFamily(),  TCampInfo.col_status(), actionStatus.toString().getBytes());
+
+            campInfoTable.put( put );
+
+            logger.info("updateCampActionDetailStatus( actionStatus:{} ) success  for campId: {}", actionStatus, campID);
+
+        } catch (IOException e) {
+            logger.error("flush failed, detail exception: ", e);
+        }
+
+    }
+
+
+    public Map<String, String>  buildUserInfoMap( Result resultSms  ) {
+        Map<String, String>  realValuesMap = new HashMap<>();
+        for(TemplatePara templatePara: TemplatePara.values()) {
+            byte[] valueByte = resultSms.getValue( templatePara.getColumnFamily(), templatePara.getColumnQualifier() );
+            String value = new String(valueByte);
+            realValuesMap.put( templatePara.getTemplateChar(), value);
+        }
+
+        return realValuesMap;
+    }
+
+
+
+    @Override
+    public void performAction(CampInfo campInfo, SmsAction smsAction, SmsTaskControl smsTaskControl) {
+
+        String campIdRowKey = campInfo.getCamp_id();
+
+        logger.info("============= started performAction() for camp:{} =============", campIdRowKey );
+
+
+        try {
+            String rowKey = String.valueOf(campID);
+
+            Get get_campStatus = new Get( rowKey.getBytes() );
+            get_campStatus.addColumn(TCampInfo.ColFamily(),  TCampInfo.col_status());
+            Result result_campStatus = campInfoTable.get(get_campStatus );
+            if(result_campStatus !=null && !result_campStatus.isEmpty()) {
+                String previousStatus = HBaseUtil.getValueAsString(result_campStatus, TCampInfo.ColFamily(), TCampInfo.col_status());
+                if(previousStatus != null ) {
+                    if(previousStatus.equals( CampaignActionStatus.ACTION.toString() )) {
+                        // this is resume ACTION from last Shutdown
+                        updateCampActionDetailStatus( CampaignActionStatus.ACTION_RESUME );
+                    } else {
+                        // first time READY->ACTION
+                        updateCampActionDetailStatus( CampaignActionStatus.ACTION );
+
+
+                        ////// Approach of store bitMap with hBase
+                        /*
+                        if( optionalJedis != null) {
+
+                            Get get_redisBitSet = new Get( campIdRowKey.getBytes() );
+                            get_redisBitSet.addColumn(TCampInfo._Buffers.ColFamily(), TCampInfo._Buffers.col_redisBitSet());
+                            Result result_redisBitSet = campInfoTable.get( get_redisBitSet );
+                            if(result_redisBitSet !=null && !result_redisBitSet.isEmpty()) {
+                                byte[]  redisBitSet = result_redisBitSet.getValue(TCampInfo._Buffers.ColFamily(), TCampInfo._Buffers.col_redisBitSet());
+                                if(redisBitSet != null) {
+                                    String campBitMapRedisKey = CacheServiceRedisImpl.getCampBitMap( campIdRowKey );
+
+                                    //not need store this keyMap in hbase
+                                    //optionalJedis.set(campBitMapRedisKey.getBytes(), redisBitSet);
+
+                                    // when camp is action, update the global exclude List
+                                    optionalJedis.bitop(BitOP.OR, UserTagUtils.GLOBAL_EXCLUDE_USERS_KEY,  campBitMapRedisKey, UserTagUtils.GLOBAL_EXCLUDE_USERS_KEY );
+                                }
+                            }
+
+                        }
+                        */
+                    }
+
+                }
+            }
+
+
+
+
+            final int LIMIT_SMS_SEND_WITHIN_1_MINS = smsAction.getLimitSmsSendWithinOneHour() / 60 ; // limit of each 1min interval
+            final int GAP_1_MINS_IN_MILISECONDS = 1000 * 60;
+            int limitSmsSendCount = 0;
+            Calendar  lastSmsSendCheckTime = null;
+
+            Get get = new Get( campIdRowKey.getBytes() );
+            get.addFamily( TCampInfo._Users.ColFamily() );
+            Result result = campInfoTable.get( get );
+
+            final int totalUsersToAction = result.size();
+            logger.info("============= performAction() for camp:{}  remainUsersToAction:{} =============", campIdRowKey, totalUsersToAction );
+
+            CellScanner cellScanner =  result.cellScanner();
+            long sendCount = 0;
+            long sendFailCount = 0;
+            long userScanned = 0;
+            String extendaccessnum = null;
+            while ( cellScanner.advance() ) {
+
+                ++userScanned;
+                final long progress = 100* userScanned/totalUsersToAction;
+
+
+                if( !smsTaskControl.isWorking()) {
+
+                    logger.info(" smsTaskControl disabled working, waitForResume  with campId={},  progress={}%", campIdRowKey, progress);
+
+                    flushDB(); // force to flush DB.
+
+                    smsTaskControl.waitForResume( this ); // waiting until continue allowed
+                    logger.info(" smsTaskControl enabled working, got Resumed with campId={},  progress={}%", campIdRowKey, progress);
+                }
+
+                Cell cell = cellScanner.current();
+
+
+                String userGUID = new String(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength());
+                String valueOfRowKeySms = new String(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+
+                Get getSms = new Get( valueOfRowKeySms.getBytes() );
+                getSms.addFamily( TSmsAction._User.ColFamily() );
+
+                Result resultSms = smsActionTable.get(getSms);
+
+                boolean sendSuccess = false;
+                if(resultSms == null || resultSms.isEmpty()) {
+
+                    sendSuccess = false;
+
+                    logger.warn(" Error, rowKeySms not found in Sms_table, userGUID={}  rowKeySms={}", userGUID, valueOfRowKeySms);
+
+                } else {
+                    byte[] mobileNum = resultSms.getValue( TSmsAction._User.ColFamily(),  TSmsAction._User.col_mobile() );
+
+                    if(mobileNum == null) {
+
+                        sendSuccess = false;
+
+                        logger.warn(" performAction().sendMessage userGUID = {}, rowKeySms={} mobileNum is missing!", new String[]{
+                                userGUID,
+                                valueOfRowKeySms
+                        });
+
+                    } else {
+
+                        String mobileStr = new String(mobileNum);
+
+                        String seqNum = valueOfRowKeySms;
+
+                        Map<String, String> realValuesMap = buildUserInfoMap( resultSms );
+
+                        String smsModelParameters = campInfo.buildRealSmsTemplateParaString( realValuesMap );
+
+                        if(logger.isTraceEnabled()) {
+                            logger.trace(" performAction().sendMessage userGUID = {}, rowKeySms={} mobileStr={} smsModelParameters={}", new String[]{
+                                    userGUID,
+                                    valueOfRowKeySms,
+                                    mobileStr,
+                                    smsModelParameters
+                            });
+                        }
+
+                        if(extendaccessnum==null) {
+                            extendaccessnum = TSmsReplyTrack.registerExtendNumForCamp(smsReplyTrackTable, campID);
+                        }
+
+                        if(limitSmsSendCount >= LIMIT_SMS_SEND_WITHIN_1_MINS) {
+
+                            long duration = Calendar.getInstance().getTimeInMillis() - lastSmsSendCheckTime.getTimeInMillis(); // in milli-Seconds
+                            // 10 s'
+                            if(duration < GAP_1_MINS_IN_MILISECONDS ) {
+
+                                flushDB(); // count in time for DB flush
+
+                                duration = Calendar.getInstance().getTimeInMillis() - lastSmsSendCheckTime.getTimeInMillis(); // in milli-Seconds
+                                long gap = GAP_1_MINS_IN_MILISECONDS - duration;
+                                if(gap > 0) {
+                                    logger.info("campId={} encounter SMS send limit control, userScanned={}, limitSmsSendCount={}, progress={}%, let's sleep gap={} milli-seconds", campIdRowKey, userScanned, limitSmsSendCount, progress,  gap);
+                                    Thread.sleep(  gap );
+                                    logger.info("campId={} resume from SMS send limit control, userScanned={}, limitSmsSendCount={}, progress={}%", campIdRowKey, userScanned, limitSmsSendCount, progress);
+                                } else {
+                                    logger.info("campId={} is align with SMS send limit control, userScanned={}, limitSmsSendCount={}, progress={}%", campIdRowKey, userScanned, limitSmsSendCount, progress);
+                                }
+                            } else {
+                                logger.info("campId={} is slower then limit control, delay={} userScanned={}, limitSmsSendCount={}, progress={}%", campIdRowKey, duration - GAP_1_MINS_IN_MILISECONDS,  userScanned, limitSmsSendCount, progress);
+                            }
+
+                            limitSmsSendCount = 0;
+                            lastSmsSendCheckTime = Calendar.getInstance();
+
+                        }
+
+                        RespMsgSmsSend respSend =  smsAction.sendMessage(mobileStr, campInfo.getTemplt_id(), seqNum, smsModelParameters, extendaccessnum);
+
+                        ++limitSmsSendCount;
+
+                        // now Moving this user from  family _Users -> _SentUsers.
+                        // it allow us resume send action from pause by Hourly blocking(20:00~08:00)
+                        // it also made possible to resume from a stop situation from Tomcat shutdown.
+                        HBaseUtil.moveOrRenameAColumn(campInfoTable, campIdRowKey.getBytes(), valueOfRowKeySms.getBytes(),
+                                TCampInfo._Users.ColFamily(), userGUID.getBytes(),
+                                TCampInfo._SentUsers.ColFamily(), userGUID.getBytes()
+                                );
+
+                        if(null == lastSmsSendCheckTime) {
+                            lastSmsSendCheckTime = Calendar.getInstance();
+                        }
+
+                        sendSuccess = respSend.isSuccess();
+                    }
+
+
+
+                }
+
+                Date now = new Date();
+                String currentTime = now.toString();
+
+                Append appendSms = new Append( valueOfRowKeySms.getBytes() );
+
+                Increment increment = new Increment( campIdRowKey.getBytes() );
+
+                if(sendSuccess) {
+                    appendSms.add( TSmsAction._Sms.ColFamily(), TSmsAction._Sms.col_send(), currentTime.getBytes() );
+                    increment.addColumn(TCampInfo.ColFamily(),  TCampInfo.col_smsSendCount(), 1);
+                    ++sendCount;
+                } else {
+                    appendSms.add(TSmsAction._Sms.ColFamily(), TSmsAction._Sms.col_sendFail(),  currentTime.getBytes() );
+                    increment.addColumn(TCampInfo.ColFamily(), TCampInfo.col_smsSendFailCount(), 1);
+                    ++ sendFailCount;
+                }
+
+                smsActionTable.append(appendSms);
+                campInfoTable.increment(increment);
+
+            }
+
+            // status -> Ready
+            updateCampActionDetailStatus( CampaignActionStatus.DONE );
+
+            logger.info("============= performAction()  Done for camp:{}, sendCount={}, sendFailCount={} =============", campInfo.getCamp_id(), sendCount, sendFailCount );
+
+        } catch (IOException e) {
+            logger.error("error on  performAction(), detail exception: ", e);
+        } catch (InterruptedException e) {
+            logger.error("I was Interrupted : " + this , e);
+
+            flushDB(); // force to flush DB.
+
+            Thread myThread = Thread.currentThread();
+            myThread.interrupt();
+        }
+
+    }
+
+
+    @Override
+    public String getStatsTitle() {
+        return this.getClass().getCanonicalName() + "-campID:" + campID + "-objID:" + this.hashCode();
+    }
+
+    @Override
+    public Map<String, String> getStatsMap() {
+        return null;
+    }
+}

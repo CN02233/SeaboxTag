@@ -1,0 +1,75 @@
+package com.evergrande.hdmp.usertags.action.sms;
+
+import com.evergrande.sms.entity.Reply;
+import com.evergrande.sms.entity.Report;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/17/16,5:15 PM
+ */
+public   class RespMsgSmsReply extends SmsResp {
+
+    private static final Logger logger = LoggerFactory.getLogger(RespMsgSmsRecv.class);
+
+    private String   extendaccessnum;
+
+    private String description;
+
+    private List<Reply> resultList;
+
+
+    public String getExtendaccessnum() {
+        return extendaccessnum;
+    }
+
+    public void setExtendaccessnum(String extendaccessnum) {
+        this.extendaccessnum = extendaccessnum;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public List<Reply> getResultList() {
+        return resultList;
+    }
+
+    public void setResultList(List<Reply> resultList) {
+        this.resultList = resultList;
+    }
+
+
+    public static RespMsgSmsReply   createFromResponseMap(Map<String, Object> responseMap) {
+
+        RespMsgSmsReply respMsgSmsReply = new RespMsgSmsReply();
+
+        String ret_code = (String)responseMap.get("return_code");
+        respMsgSmsReply.setRowResult( ret_code );
+        respMsgSmsReply.setSuccess( isSuccessReturnStr( ret_code ) );  //返回结果
+        Object descObj = responseMap.get("description");
+        respMsgSmsReply.description = (descObj != null) ? descObj.toString() : NULL_STR_FROM_API ; //返回结果描述
+
+        Object extendNum = responseMap.get("description");
+        respMsgSmsReply.extendaccessnum = (extendNum != null) ? extendNum.toString() : NULL_STR_FROM_API;
+
+        try {
+            List<Reply> replyList = (List<Reply>) responseMap.get("replyList");//回复列表
+            respMsgSmsReply.setResultList(replyList);
+        } catch (Throwable e) {
+            logger.error("SMS API changed, bad API catching.", e);
+        }
+
+        return respMsgSmsReply;
+    }
+
+}
+

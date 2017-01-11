@@ -1,0 +1,120 @@
+package com.evergrande.hdmp.usertags.logicquery.impl;
+
+
+import com.evergrande.hdmp.usertags.logicquery.TagCondition;
+import com.evergrande.hdmp.usertags.utils.UserTagUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 1/19/16,11:54 AM
+ */
+public class TagConditionSerializeTest {
+
+
+    private final static Logger logger = LoggerFactory.getLogger(TagConditionSerializeTest.class);
+
+    private static class TestSampleClassHolder {
+        protected static final TagCondition  tagCondition = createTestSample();
+    }
+
+    public static TagCondition getTestCondition() {
+        return TestSampleClassHolder.tagCondition;
+    }
+
+    @Test
+    public void testSerializeWithJson() {
+
+        /////  Serialize Test
+
+        String beforeDump = UserTagUtils.objectToJson( getTestCondition() );
+
+        logger.debug("\n\n==============  1, using Json serialize: -------------------\n{}", beforeDump);
+
+
+        /////  DeSerialize Test
+        TagConditionBase afterObj = UserTagUtils.jsonToObject(beforeDump, TagConditionBase.class);
+        String afterDump = UserTagUtils.objectToJson( afterObj );
+
+        logger.debug("\n\n==============  2, Json deserialize: -------------------\n{}", afterDump);
+
+        Assert.assertEquals(beforeDump, afterDump);
+
+    }
+
+    @Test
+    public void testSerializeWithJAXB() {
+
+
+        try {
+            /////  Serialize Test
+            JAXBContext context = JAXBContext.newInstance(Or.class, And.class, Match.class, TagConditionBase.class);
+
+            Marshaller marshaller = context.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            marshaller.marshal( getTestCondition() , bos);
+            String beforeDump = bos.toString();
+
+            logger.debug("\n\n==============  3, JAXB serialize: -------------------\n{}", beforeDump);
+
+
+            /////  DeSerialize Test
+            Unmarshaller unmarshaller = context.createUnmarshaller();
+
+            TagCondition condition2 = (TagCondition)unmarshaller.unmarshal(new ByteArrayInputStream(beforeDump.getBytes()));
+
+            ByteArrayOutputStream bos2 = new ByteArrayOutputStream();
+            marshaller.marshal( condition2, bos2);
+            String afterDump = bos.toString();
+
+            logger.debug("\n\n==============  4, JAXB deserialize: -------------------\n{}", afterDump);
+
+            Assert.assertEquals(beforeDump, afterDump);
+
+
+        } catch (JAXBException e) {
+            logger.error("Error on JAXB Serialize/DeSerialize for tagCondition: ", e);
+            Assert.fail();
+        }
+
+
+    }
+
+
+    public static TagCondition createTestSample() {
+        TagConditionBase c1 = new Match(1, "Person:FeMale");
+        TagConditionBase c2 = new Match(2, "Area:GuZhou");
+        TagConditionBase c3 = new Match(3, "Area:ShangHai");
+        TagConditionBase tagGroup1 = c1.and( c2.or(c3) );
+
+        TagConditionBase c11 = new Match(11, "Person:Male");
+        TagConditionBase c12 = new Match(12, "Age:20-30");
+        TagConditionBase c13 = new Match(13, "Age:30-40");
+        TagConditionBase tagGroup2 = c11.and(c12.or(c13));
+
+        TagCondition tagEnd = tagGroup1.or( tagGroup2 );
+
+        return tagEnd;
+    }
+
+
+
+}

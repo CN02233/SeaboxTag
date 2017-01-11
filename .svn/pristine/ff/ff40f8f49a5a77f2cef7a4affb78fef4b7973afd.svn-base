@@ -1,0 +1,126 @@
+package com.evergrande.hdmp.usertags.action.job.engine;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+/**
+ * Created by wuchh on 3/11/16.
+ */
+public class SmsTaskManagerTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(SmsTaskManagerTest.class);
+
+    private SmsTaskManager smsTaskManager = new SmsTaskManager();
+
+    private final int actual_sleep_volumn = 250; // use 1000 means  1second, use 250 to accelerate Unit Test.
+
+    class TestThread extends Thread {
+
+
+        boolean useManagerControl = true;
+        volatile int nCount = 0;
+
+        @Override
+        public void run() {
+
+
+            // loop forever
+            while ( true ) {
+                // do something ...
+                ++ nCount;
+
+                try {
+
+                    if(useManagerControl) {
+                        if( ! smsTaskManager.isWorking()) {
+                            logger.debug("{} is waitForResume with nCount={}", this, nCount);
+                            smsTaskManager.waitForResume( this );
+                            logger.debug("{} got Resumed with nCount={}", this, nCount);
+                        }
+                    }
+
+                    logger.debug("{} is runing with nCount={}", this, nCount);
+
+                    Thread.sleep(1 * actual_sleep_volumn); //I need busy with 1secs
+
+                } catch (InterruptedException e) {
+                    logger.debug("{} is Interrupted with nCount={}", this, nCount);
+                    Thread myThread = Thread.currentThread();
+                    myThread.interrupt();
+                }
+
+
+            }
+
+        }
+
+    }
+
+
+
+    class CronJobSimulator extends Thread {
+
+        @Override
+        public void run() {
+
+            // loop forever
+            while ( true ) {
+                // do something ...
+
+                try {
+                    Thread.sleep(4 * actual_sleep_volumn);
+                    logger.debug("smsTaskManager pauseExecTask()", this);
+                    smsTaskManager.pauseExecTask();
+
+                    Thread.sleep(6 * actual_sleep_volumn);
+                    logger.debug("smsTaskManager resumeExecTask()", this);
+                    smsTaskManager.resumeExecTask();
+
+                } catch (InterruptedException e) {
+                    logger.debug("{} is Interrupted", this);
+                    Thread myThread = Thread.currentThread();
+                    myThread.interrupt();
+                }
+            }
+
+        }
+
+    }
+
+
+
+
+    @Test
+    public void testRuning2Pause() throws InterruptedException {
+        TestThread testThread = new TestThread();
+        TestThread testThread2 = new TestThread();
+        TestThread testThread3 = new TestThread();
+        TestThread testThread4 = new TestThread();
+        testThread4.useManagerControl = false;
+
+        CronJobSimulator cronJobSimulator = new CronJobSimulator();
+
+        testThread.start();
+        testThread2.start();
+        cronJobSimulator.start();
+        testThread3.start();
+        testThread4.start();
+
+        Thread.sleep(40 * actual_sleep_volumn);
+        testThread.interrupt();
+        testThread2.interrupt();
+        testThread3.interrupt();
+        testThread4.interrupt();
+        cronJobSimulator.interrupt();
+
+        Assert.assertTrue( testThread.nCount < 25 );
+        Assert.assertTrue( testThread2.nCount < 25 );
+        Assert.assertTrue( testThread3.nCount < 25 );
+        Assert.assertTrue( testThread4.nCount > 34 );
+    }
+
+}

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<%@ page language='java' pageEncoding='UTF-8' contentType='text/html;charset=UTF-8' %>
+<html lang="en">
+<head>
+   <title>Bootstrap 实例 - 响应式表格</title>
+   <jsp:include  page="/pageStatic/evergrandeBase.jsp"/> 
+</head>
+<body>
+<script src="${localProjectName}/pageJs/camp/campView/campEdit.js?v=${revision}"></script>
+<script src="${localProjectName}/utils/zTree/js/jquery.ztree.core-3.5.js?v=${revision}"></script>
+<script src="${localProjectName}/utils/zTree/js/jquery.ztree.excheck-3.5.min.js?v=${revision}"></script>
+<script src="${localProjectName}/pageJs/base/modal-div.js?v=${revision}"></script>
+
+<link href="${localProjectName}/pageCss/modal-div.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/campView/campEdit.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/common/dataTable.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/utils/zTree/css/zTreeStyle/zTreeStyle.css?v=${revision}" rel="stylesheet">
+
+<script>window.jQuery || document.write('<script src="${localProjectName}/utils/jquery/jquery.min.js?v=${revision}"><\/script>')</script>
+<script src="${localProjectName}/utils/jquery/plugin/jquery.mCustomScrollbar.concat.min.js?v=${revision}"></script>
+<link rel="stylesheet" href="${localProjectName}/utils/jquery/plugin/jquery.mCustomScrollbar.min.css?v=${revision}">
+
+<div id="titleDiv" class="body-title">活动总览<span class="secord-title">></span><span class="secord-title">活动编辑</span>
+	<div id="detail-title-foot" class="detail-title-foot">
+		活动ID：${reqData.camp_id}
+	</div>
+</div>
+<div id="splitDiv" class="split_title"><!-- title和内容页的分割线START-----splitDiv -->
+
+<div id="camp-base-info" style="width:100%;height:70px;border:0px solid red;float:left;margin-top:10px;">
+	<table style="width:100%;margin-top:30px;">
+		<tr style="width:100%;height:100%;">
+			<input type="hidden" id="camp_id" value="${reqData.camp_id}"/>
+			<input type="hidden" id="campId" value="${reqData.camp_id}"/>
+			<td style="width:20%;border:0;"><input type="text" class="form-control not-null" style="background:#F7F7F7;width:90%;" placeholder="点击输入活动名称" id="camp_nm" name="活动名称"/></td>
+			<td style="width:20%;border:0;"> <input type="text" class="form-control not-null dateInput" style="background:#F7F7F7;width:90%;" placeholder="请选择开始时间" id="camp_start_dt" name="活动开始时间"/></td>
+			<td style="width:20%;border:0;"><input type="text" class="form-control not-null dateInput" style="background:#F7F7F7;width:90%;" placeholder="请选择结束时间" id="camp_end_dt" name="活动结束时间"/></td>
+			<td style="width:20%;border:0;">
+				<select id="camp_inds_cd"  class="form-control not-null selectCss"
+					style="width:88%;float:left;" name="活动产业" placeholder="请选择活动产业" >
+							 	<option value="">请选择活动产业并设置</option>
+							</select>
+					
+				
+			</td>
+			<td style="width:20%;border:0;">
+				<select id="camp_chnl_cd"  class="form-control not-null selectCss"
+					style="width:80%;float:left;" name="活动渠道" placeholder="请选择渠道并设置" >
+							 	<option value="">请选择渠道并设置</option>
+							</select>
+					<div id="showMsgMadolId" onclick="showMsgMadol()"  class="msgBtn">
+						<div></div>
+					</div>
+					
+				
+			</td>
+			<input type="hidden" id="camp_status_cd" />
+		</tr>
+	</table>
+</div><!-- 活动基础信息 -->
+
+<div>
+<div id="tag-main-body" style="width:100%;border:0px solid red;float:left">
+	<div id="selected-tag-main" style="width:50%;height:100%;border:0px solid blue;float:left;">
+		<div id="selected-tag" style="width:100%;max-height:90%;border:0px solid blue;float:left;"><!-- 已选标签 -->
+			<div style="width:97%;height:5%;margin-left:3%;"><span style="font-weight:bold;font-size:15px;">已选标签</span></div>
+			
+			<div id="tag_grp_div_1">
+			</div>
+			
+			<div id="tag_grp_div_2">
+				<table class="tag_grp_tab" >
+					<tr >
+						<td>
+							<div id="finalTagGrp" class="tag_grp_info"><!-- 最终选择标签合集 -->
+							</div>
+						</td>
+						<td >
+							<label id="addTagGrpLb" class='sprite-img-second' style="background-position:-121px -26px;margin-top:10%;"></label><!-- 增加已选标签组按钮DIV -->	
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div><!-- 已选标签 -->
+	
+	
+		<div style="width:95%;height:5%;margin-left:5%;float:left;margin-top:5%;border:0px solid orange;">
+			<span style="font-size:13px;">人群数量</span>
+			<span id="indv_num" style="font-size:13px;margin-left:10px;">0</span>
+		</div>
+	</div>
+	
+	
+	
+	<div id="no-selected-tag" style="width:50%;height:100%;border:0px solid blue;float:left;"><!-- 待选标签 -->
+		<div style="width:100%;height:5%;margin-left:5%;float:left">
+			<span id="tagMarketSpan" style="font-size:15px;cursor: pointer;float:left;">标签市场</span>
+			
+			<label style="border:1px solid #D9D9D9;height:100%;float:left;margin:0 20px 0 20px;"></label>
+			<span id="tagFavSpan" style="font-size:15px;cursor: pointer;float:left;" >标签收藏夹</span>
+		</div>
+		<div id="tag-fav" class="tag-market" style="width:90%;height:92%;background:#F7F7F7;border-radius:10px;float:left;border:0px solid #D9D9D9;margin-top:2%;margin-left:5%;margin-right:5%;"><!-- 标签收藏夹 -->
+			<div class="zTreeDemoBackground left">
+				<ul id="tag-fav-tree" class="ztree"></ul>
+			</div>
+		</div><!-- content_wrap -->
+		
+		<div id="tag-market" class="tag-market" style="width:90%;height:92%;background:#F7F7F7;border-radius:10px;float:left;border:0px solid #D9D9D9;margin-top:2%;margin-left:5%;margin-right:5%;"><!-- 标签市场 -->
+			<div class="zTreeDemoBackground left">
+				<ul id="tag-market-tree" class="ztree"></ul>
+			</div>
+		</div><!-- content_wrap -->
+	</div><!-- 待选标签 -->
+</div><!-- tag-main-body 标签DIV -->
+
+<div id="operation_body" style="border:0px solid red;float:left;width:100%;"><!-- 操作按钮DIV -->
+	<div id="sbmit_button" style="text-align:right;float:right;width:100%;">
+		<button id="saveCamp" type="button" class="btn btn-active flowBtn" style="background-color:#EF576D;"  data-toggle="button">暂   存</button>
+		<button id="submitCamp" type="button" class="btn btn-active flowBtn" style="background-color:#6CABF6;" data-toggle="button">提   交</button>
+	</div>
+</div>
+
+
+</div>
+
+
+
+<!-- 短信设置弹出框（Modal） -->
+<div id="templateModal" class="modal fade modal_div template_modal"  role="dialog" 
+   aria-labelledby="myModalLabel" aria-hidden="true" >
+   <div class="modal-dialog" style="margin:1% auto auto auto;width:50%;height:95%;">
+	<div class="modal-content" style="width:100%;height:100%;">
+		<div class="modal_div_header">短信设置<label class="close sprite-img-second" data-dismiss="modal"></label></div>
+		<div id="msg_body" class="msg_body"><!-- msg_body start -->
+			<div id="msg_tmp" class="msg_tmp msg_public" style="overflow:auto;">
+				<div >短信模板ID</div>
+				<input style="margin:1% 3% auto 3%;width:70%;float:left;" type="text" id="sms_tmp_id" maxlength="9" class="form-control"/>
+				<button data-toggle="button" class="btn btn-active msg_tmp_btn" type="button">获取短信内容</button>
+			</div>
+			
+			<div id="msg_conent" class="msg_conent msg_public">
+				<div >短信模板内容</div>
+				<textarea class="form-control" disabled="disabled" id="msg_conent_ta" style=""></textarea>
+			</div>
+			
+			<div id="msg_params" class="msg_params msg_public">
+				<div >参数设置</div>
+				<table style="">
+					<tr >
+						<td class="msg_params_td" style="width:50%;text-align:left;font-size:15px;color:black;">参数名称</td>
+						<td class="msg_params_td" style="width:50%;text-align:left;font-size:15px;color:black;">参数值
+						<label id="paramHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+						<!--  td class="msg_params_td" style="width:8%;padding-left:4%;"></td-->
+					</tr>
+					
+					
+					<tr id="addParamTr" style="">
+						<td class="msg_params_td" style="width:50%;"><input style="height:15px;background-color:#F7F7F7;margin-right:5%;" disabled=disabled type="text" class="form-control"/></td>
+						<td class="msg_params_td" style="width:50%;"><input style="height:15px;background-color:#F7F7F7;margin-left:5%;" disabled=disabled type="text" class="form-control"/></td>
+						<!--  td class="msg_params_td" style="width:8%;padding-left:4%;"><label class='sprite-img-second' style='background-position:-121px -26px;float:left;' onclick="msgAddParam()"></label></td-->
+					</tr>
+					
+				</table>
+				
+			</div>
+			
+			<div id="msg_test" class="msg_test msg_public">
+				<div >测试号码</div>
+				<textarea class="form-control" id="test_nums" style=""></textarea>
+			</div>
+			
+			
+		</div><!-- msg_body end -->
+		
+		<div id="btn_grp" class="btn_grp" style="" >
+			<button data-toggle="button" data-dismiss="modal" style="background-color:white;color:#6CABF6;" class="btn btn-active" id="returnButton" onclick="clearSmsTemp()" type="button">取消</button>
+			<button data-toggle="button" style="background-color:#6CABF6;color:white;margin-left:30px;" class="btn btn-active" onclick="viewTestMsg();" type="button">预览 测试</button>
+			<button data-toggle="button" data-dismiss="modal" style="background-color:#F4BD14;color:white;margin-left:30px;" class="btn btn-active" onclick="checkSmsTemp()" id="nextButton" type="button">确认</button>
+		</div>
+	</div>
+</div>
+</div><!-- /.modal -->
+
+<form>
+	<input type="hidden" id="campId" value="${reqData.camp_id}"/>
+	<input type="hidden" id="indv_num_hid" value="0"/>
+</form>
+<jsp:include  page="/pageStatic/evergrandeBaseOnload.jsp"/>
+</body>
+</html>
+			

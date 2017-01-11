@@ -1,0 +1,163 @@
+package com.evergrande.hdmp.usertags.mybatis.dao;
+
+import com.evergrande.hdmp.usertags.entity.TagCategoryHighLevel;
+import com.evergrande.hdmp.usertags.entity.TagCategoryLastLevel;
+import com.evergrande.hdmp.usertags.entity.TagCategoryBase;
+import com.evergrande.hdmp.usertags.utils.UserTagUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 1/23/16,1:18 PM
+ */
+public class TagCategoryDaoTest {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(TagCategoryDaoTest.class);
+
+    private static SqlSessionFactory sqlSessionFactory;
+
+    @BeforeClass
+    public static void init() throws IOException {
+
+        sqlSessionFactory = MockDbUtils.initDB();
+
+    }
+
+
+    @Test
+    public void testListAll() {
+
+        SqlSession session = sqlSessionFactory.openSession();
+
+        try {
+
+            TagCategoryDao categoryMapper = session.getMapper(TagCategoryDao.class);
+
+            List<TagCategoryBase> categories = categoryMapper.listAll();
+
+            logger.debug("total available tags: {}", categories.size());
+
+            Assert.assertTrue(categories.size() > 0);
+
+            for(TagCategoryBase category: categories) {
+                logger.debug("tag-category: id={},  name={},  desc={}", category.getTag_ctgy_id(), category.getTag_ctgy_nm(), category.getTag_desc());
+                Assert.assertNotNull( category.getTag_ctgy_nm() );
+
+                if(category.getHave_tag_ind()) {
+                    Assert.assertTrue( category instanceof TagCategoryLastLevel);
+                } else {
+                    Assert.assertTrue(category instanceof TagCategoryHighLevel);
+                }
+            }
+
+        }  finally {
+            session.close();
+        }
+
+    }
+
+    @Test
+    public void testGetById() {
+
+        SqlSession session = sqlSessionFactory.openSession();
+
+        try {
+
+            TagCategoryDao categoryMapper = session.getMapper(TagCategoryDao.class);
+
+            TagCategoryBase category = categoryMapper.getById(1);
+
+            logger.debug("tag-category: id={},  name={},  desc={}", category.getTag_ctgy_id(), category.getTag_ctgy_nm(), category.getTag_desc());
+
+            Assert.assertNotNull( category.getTag_ctgy_nm() );
+
+            if(category.getHave_tag_ind()) {
+                Assert.assertTrue( category instanceof TagCategoryLastLevel);
+            } else {
+                Assert.assertTrue(category instanceof TagCategoryHighLevel);
+            }
+
+        } finally {
+            session.close();
+        }
+
+    }
+
+
+    @Test
+    public void testFindAllByName() {
+
+        SqlSession session = sqlSessionFactory.openSession();
+
+        try {
+
+            TagCategoryDao categoryMapper = session.getMapper(TagCategoryDao.class);
+
+            String nameLike = "%人%";
+            List<TagCategoryBase>  categories = categoryMapper.findAllByName( nameLike );
+
+            logger.debug("found tags which like {} :  {}", nameLike,  categories.size());
+
+            Assert.assertTrue(categories.size() > 0);
+
+            for(TagCategoryBase category: categories) {
+                logger.debug("tag-category: id={},  name={},  desc={}", category.getTag_ctgy_id(), category.getTag_ctgy_nm(), category.getTag_desc());
+                Assert.assertNotNull( category.getTag_ctgy_nm() );
+
+                if(category.getHave_tag_ind()) {
+                    Assert.assertTrue( category instanceof TagCategoryLastLevel);
+                } else {
+                    Assert.assertTrue(category instanceof TagCategoryHighLevel);
+                }
+            }
+
+        } finally {
+            session.close();
+        }
+
+    }
+
+
+    @Test
+    public void testGetFavoriteTagsById() {
+
+        SqlSession session = sqlSessionFactory.openSession();
+
+        try {
+
+            TagFavoriteDao dao = session.getMapper(TagFavoriteDao.class);
+
+            int userId = 1;
+            List<TagCategoryLastLevel> favoriteTags = dao.getFavoriteTagsByUser(userId);
+
+            logger.debug("user {} have favoriteTags: {}",  userId, favoriteTags);
+
+            Assert.assertTrue(favoriteTags.size()>0);
+
+            for(TagCategoryBase category: favoriteTags) {
+                logger.debug("user-> Favorite tag-category: id={},  name={},  desc={}", category.getTag_ctgy_id(), category.getTag_ctgy_nm(), category.getTag_desc());
+                Assert.assertNotNull( category.getTag_ctgy_nm() );
+            }
+
+
+        } finally {
+            session.close();
+        }
+
+    }
+
+
+}

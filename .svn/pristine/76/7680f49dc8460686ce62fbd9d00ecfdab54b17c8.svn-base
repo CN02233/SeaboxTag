@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<%@ page language='java' pageEncoding='UTF-8' contentType='text/html;charset=UTF-8' %>
+<html lang="en">
+<head>
+   <title>Bootstrap 实例 - 响应式表格</title>
+   <jsp:include  page="/pageStatic/evergrandeBase.jsp"/> 
+</head>
+<body>
+<script src="${localProjectName}/pageJs/camp/campView/evtDetail.js?v=${revision}"></script>
+<link href="${localProjectName}/pageCss/camp/campView/evtDetail.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/campView/campEdit.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/campView/scroll.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/common/dataTable.css?v=${revision}" rel="stylesheet">
+<script>window.jQuery || document.write('<script src="${localProjectName}/utils/jquery/jquery.min.js?v=${revision}"><\/script>')</script>
+<script src="${localProjectName}/utils/jquery/plugin/jquery.mCustomScrollbar.concat.min.js?v=${revision}"></script>
+<link rel="stylesheet" href="${localProjectName}/utils/jquery/plugin/jquery.mCustomScrollbar.min.css?v=${revision}">
+<script src="${localProjectName}/pageJs/base/modal-div.js?v=${revision}"></script>
+<link href="${localProjectName}/pageCss/modal-div.css?v=${revision}" rel="stylesheet">
+<script>
+	//showPageForSplit('/camp/campView/listMainData.do',listData);
+	
+	
+	
+	
+	
+	
+	
+</script>
+
+<div id="titleDiv" class="body-title">活动总览<span class="secord-title">></span><span class="secord-title">活动详情</span>
+	<div id="detail-title-foot" class="detail-title-foot">
+		活动ID：
+	</div>
+</div>
+
+<div class="detail-info">
+	<ul id="detail-info-ul" >
+		<li >活动名称:</li>
+		<li >开始时间:</li>
+		<li >结束时间:</li>
+		<li >送达渠道:<span style="margin:5px;color:blue;cursor: pointer;font-size:16px;" id="tempIconId" class='glyphicon glyphicon-comment'></span></li>
+		
+	</ul>
+</div>
+    
+<div id="indv-info" class="indv-info">
+	<span>投放效果</span>
+	<table id="send-info" class="send-info">
+		<tr>
+			<td  class="send-info-td" style="width:16%;text-align:left;">推送成功数量<label id="sendNumHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+			<td  class="send-info-td" style="width:16%;text-align:left;">推送成功占比<label id="sendPcntHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+			<td  class="send-info-td" style="width:16%;text-align:left;">成功送达数量<label id="repNumHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+			<td  class="send-info-td" style="width:16%;text-align:left;">成功送达占比<label id="repPcntHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+			<td  class="send-info-td" style="width:16%;text-align:left;">响应短信数量<label id="replyNumHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+			<td  class="send-info-td" style="width:17%;text-align:left;">响应短信占比<label id="replyPcntHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+		</tr>
+		<tr id="send-info-val"> 
+			<td class="send-info-td send-info-val" style="width:16%;text-align:left;color:#D75063;" id="sendNum" style="color:#D75063;"></td>
+			<td class="send-info-td send-info-val" style="width:16%;text-align:left;color:red;" id="sendPcnt" style="color:red;"></td>
+			<td class="send-info-td send-info-val" style="width:16%;text-align:left;color:red;" id="repNum"  style="color:red;"></td>
+			<td class="send-info-td send-info-val" style="width:16%;text-align:left;color:red;" id="repPcnt" style="color:red;"></td>
+			<td class="send-info-td send-info-val" style="width:16%;text-align:left;color:#D75063;" id="replyNum" style="color:#D75063;"></td>
+			<td class="send-info-td send-info-val" style="width:17%;text-align:left;color:#D75063;" id="replyPcnt" style="color:#D75063;"></td>
+		</tr>
+	</table>
+</div>	
+
+<div id="label-info" class="label-info-div">
+	<div id="check-info" class="check-info">
+		<div style="width:100%;height:10%;"><span style="font-weight:bold;font-size:15px;">已选标签</span></div>
+		
+		<div id="tag-list" class="check-info-list">
+		</div>
+	</div><!-- 已选标签 check-info -->
+	
+	<div id="label-pie" style="border:0px solid blue;height:100%;width:58%;float:right;">
+		<div style="width:100%;height:10%;"><span style="font-weight:bold;font-size:15px;">标签透视图</span></div>
+			<div id="labelPieDiv" class="scroll-x ">
+				<div id="allPiePrtDiv" style="width:1000px;height:100%;overflow:auto;">
+					<div id="startDiv"></div>
+					<div id="labelPieDiv_1" style="width:25%;height:100%;float:left;">
+					</div>
+					<div id="labelPieDiv_2" style="width:25%;height:100%;float:left;">
+					</div>
+				</div>
+			</div>
+		
+	</div><!--  标签透视图 label-pie-->
+</div>
+
+<div id="hit_info" class="hit_info" style="">
+	人群数量:<span id="hit_info_span"></span>
+</div><!--  活动命中人群统计 hit_info-->
+
+<div id="operation_body" class="operation_body" >
+	<div id="back_button"  style="font-size:15px;float:left;">
+		<div class='sprite-img-first backBtn' onclick="javascript :history.back(-1);"></div>
+		<div class='backFnt' onclick="javascript :history.back(-1);">返   回</div>
+	</div>
+	
+	<div id="sbmit_button" style="text-align:right;float:right;">
+		<button type="button" class="btn btn-active flowBtn" style="background-color:#EF576D;" onclick="rejectCamp()"  data-toggle="button">驳   回</button>
+		<button type="button" class="btn btn-active flowBtn" style="background-color:#6CABF6;" onclick="passCamp()"  data-toggle="button">通   过 </button>
+	</div>
+</div><!--  操作按钮 operation_body-->
+
+
+<!-- 短信设置弹出框（Modal） -->
+<div id="templateModal" style="height:600px;" class="modal fade modal_div template_modal"  role="dialog" 
+   aria-labelledby="myModalLabel" aria-hidden="true" >
+   <div class="modal-dialog" style="margin:1% auto auto auto;width:50%;height:95%;">
+	<div class="modal-content" style="width:100%;height:100%;">	
+		<div class="modal_div_header">短信模板查看<label class="close sprite-img-second" data-dismiss="modal"></label></div>
+		<div id="msg_body" class="msg_body" style="height:90%;"><!-- msg_body start -->
+			<div id="msg_tmp" class=" msg_public" style="overflow:auto;border:0px solid red;">
+				<div >短信模板ID</div>
+				<input disabled=disabled style="margin:20px 3% auto 3%;width:94%;float:left;" type="text" id="sms_tmp_id" maxlength="9" class="form-control"/>
+			</div>
+			
+			<div id="msg_tmp" class=" msg_public" style="overflow:auto;border:0px solid red;">
+				<div >短信模板内容</div>
+				<textarea class="form-control" style="margin:20px 3% auto 3%;width:94%;float:left;resize: none;" disabled="disabled" id="msg_conent_ta" style=""></textarea>
+			</div>
+			
+			
+			<div id="msg_params" class=" msg_public">
+				<div >参数设置</div>
+				<table style="margin:auto 3% auto 3%;width:94%;float:left;">
+					<tr >
+						<td class="msg_params_td" style="width:50%;text-align:left;font-size:15px;color:black;">参数名称</td>
+						<td class="msg_params_td" style="width:50%;text-align:left;font-size:15px;color:black;">参数值
+						<label id="paramHelp" style="margin-left:10px" class="glyphicon glyphicon-question-sign"></label></td>
+						<!--  td class="msg_params_td" style="width:8%;padding-left:4%;"></td-->
+					</tr>
+					
+					
+					
+				</table>
+				
+			</div>
+			
+			
+			
+		</div><!-- msg_body end -->
+		
+	</div>
+</div>
+</div><!-- /.modal -->
+
+<jsp:include  page="/pageStatic/evergrandeBaseOnload.jsp"/>
+
+<script>
+	(function($){
+			$(window).load(function(){
+				
+				$(".scroll-y").mCustomScrollbar({});//开启DIV滚动条美化功能,美化竖方向滚动条
+				
+				$(".scroll-x").mCustomScrollbar({//开启横方向滚动条美化
+					axis:"x"
+				});
+			});
+		})(jQuery);
+</script>
+
+<form>
+	<input type="hidden" id="currPageNum" value="${reqData.currPageNum}"/>
+	<input type="hidden" id="campId" value="${reqData.camp_id}"/>
+	<input type="hidden" id="isMa" value="${reqData.isMa}"/>
+</form>
+
+</body>
+</html>
+			

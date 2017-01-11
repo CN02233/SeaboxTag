@@ -1,0 +1,26 @@
+package com.evergrande.hdmp.usertags.logicquery.impl;
+
+import com.evergrande.hdmp.usertags.logicquery.TagQueryResult;
+
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 1/26/16,8:24 AM
+ */
+public class TagQueryResultHashSetImpl implements TagQueryResult {
+
+    private Set<String> users = new HashSet<>();
+
+    public Set<String> getUsers() {
+        return users;
+    }
+
+    public int getNumOfUsers() {
+        return users.size();
+    }
+
+
+
+}

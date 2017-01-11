@@ -1,0 +1,133 @@
+package com.evergrande.hdmp.usertags.hbase;
+
+import com.evergrande.hdmp.usertags.action.CampaignActionStatus;
+import com.evergrande.hdmp.usertags.hbase.entity.TCampInfo;
+import com.evergrande.hdmp.usertags.hbase.entity.TSmsAction;
+import com.evergrande.hdmp.usertags.hbase.entity.TUserInfo;
+import com.evergrande.hdmp.usertags.service.impl.CacheServiceRedisImpl;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.*;
+import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URL;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/16/16,8:33 PM
+ */
+@Ignore
+public class CampaignActionStoreHBaseImplTest {
+
+    public static final Logger logger = LoggerFactory.getLogger(CampaignActionStoreHBaseImplTest.class);
+
+    private static final  HBaseServer hBaseServer = new HBaseServer();
+
+    CampaignActionStoreHBaseImpl actionStoreHBase;
+
+    private final String TEST_USER_INFO_LISTS[][] = {
+            {"7234234NNnNNN",        "Zhang 3", "13045678910", "123"},
+            {"65523424243434NNNNNN", "Li 4"   , "12100012121", "89"},
+            {"12323423435Nsefnnn",   "wang"   , "13045678910", ""},
+            {"nnnNN2432432422",      "unknown", "18901213211", "412"}
+    };
+
+    /*
+    ////TODO: automatic launch embedded hBase Master not work in unit test
+    //// let's do this test manually by launch  HBaseServer before.
+
+    @BeforeClass
+    public static void  startHBaseServer() throws Exception {
+        hBaseServer.start();
+    }
+
+    @AfterClass
+    public static void  shutdown() throws Exception {
+        hBaseServer.stop();
+    }
+    */
+
+    @Before
+    public void setup() throws IOException {
+        String campId = "1234";
+
+        Configuration conf = HBaseConfiguration.create();
+        URL url = ClassLoader.getSystemResource("usertags/hbase-site.xml");
+        conf.addResource(url);
+
+        Connection connection = ConnectionFactory.createConnection(conf);
+
+        TCampInfo.createTableIfMissing(connection);
+
+        TUserInfo.createTableIfMissing(connection);
+        addMockUsers( connection );
+
+        TSmsAction.createTableIfMissing( connection );
+
+        actionStoreHBase = CampaignActionStoreHBaseImpl.createInstance(campId, connection);
+    }
+
+
+
+
+    public void addMockUsers(Connection connection) throws IOException {
+
+        logger.error("\n now init user Info into {}",  TUserInfo.tableName().getName() );
+
+        for(int i=0; i< TEST_USER_INFO_LISTS.length; ++i) {
+            String guid = TEST_USER_INFO_LISTS[i][0];
+            Put putUser = new Put( guid.getBytes() );
+            putUser.addColumn( TUserInfo._CustInfo.ColFamily(),  TUserInfo._CustInfo.col_name(), TEST_USER_INFO_LISTS[i][1].getBytes() );
+            putUser.addColumn( TUserInfo._CustInfo.ColFamily(), TUserInfo._CustInfo.col_mobile(), TEST_USER_INFO_LISTS[i][2].getBytes() );
+            putUser.addColumn( TUserInfo._Spring.ColFamily(),  TUserInfo._Spring.col_point(), TEST_USER_INFO_LISTS[i][3].getBytes() );
+
+            Table t = connection.getTable(  TUserInfo.tableName() );
+            t.put(putUser);
+            t.close();
+        }
+
+
+    }
+
+    @Test
+    public void testTCampInfoCreateOneNewRecord() throws IOException {
+
+        String campUsersKeyInRedis = CacheServiceRedisImpl.getCampUsersRedisKey( 123 );
+        String tagConditionJson = "MOCK TAG CONdition";
+        long numOfUsers = 1132;
+        actionStoreHBase.saveCampaignInfo(campUsersKeyInRedis, new byte[]{0, 1,2}, tagConditionJson, numOfUsers);
+
+
+        }
+
+
+
+    @Test
+    public void testSave() {
+
+        String tagConditionJson = "mock tag Condition json: {...}";
+        long numOfUsers = 4;
+
+        int campId = 123;
+        String campUsersKeyInRedis = CacheServiceRedisImpl.getCampUsersRedisKey( campId );
+        actionStoreHBase.saveCampaignInfo(campUsersKeyInRedis, new byte[]{0, 1,2},  tagConditionJson,  numOfUsers);
+
+
+        final Set<String> excludeUsers = new HashSet<>();
+        for(String[] users: TEST_USER_INFO_LISTS) {
+            String guid = users[0];
+            actionStoreHBase.addUserToCampaignAction( guid, excludeUsers);
+        }
+
+        actionStoreHBase.updateCampActionDetailStatus( CampaignActionStatus.READY );
+
+
+    }
+
+
+}

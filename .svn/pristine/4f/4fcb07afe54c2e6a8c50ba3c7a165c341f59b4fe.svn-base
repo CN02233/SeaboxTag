@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="menu" >
+	<!-- <select id="findMenuByUsername" resultType="com.evergrande.hdmp.sys.entity.Menu" parameterType="string">
+		select m.menu_id,m.parent_menu_id,m.menu_ch_name,m.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,m.isable from 
+			sys_user u
+			left join user_role_rela ur on u.user_id=ur.user_id
+		    left join sys_role r on  ur.role_id=r.role_id
+		    left join role_menu rm on r.role_id=rm.role_id
+		    left join sys_menu m on rm.menu_id=m.menu_id
+		where u.username=#{username} and m.isable='0';
+	</select>
+	<select id="findMenuById" resultType="com.evergrande.hdmp.sys.entity.Menu" parameterType="int">
+		select m.menu_id,m.parent_menu_id,m.menu_ch_name,m.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,m.isable 
+		from sys_menu 
+		where 	menu_id=#{id}
+	</select>
+	<select id="findMenuList" resultType="com.evergrande.hdmp.sys.entity.Menu" parameterType="hashmap">
+		select * from 
+		(select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,0 menu_id,'' menu_ch_name,m.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,m.isable  
+		from sys_menu m 
+		where m.menu_level='1'   
+		union 
+		select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,sm.menu_id menu_id,sm.menu_ch_name menu_ch_name,sm.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,sm.isable  
+		from sys_menu m 
+		left join  sys_menu sm on sm.parent_menu_id=m.menu_id
+		where m.menu_level='1') a order by a.parent_menu_id,a.menu_id; 
+	</select>
+	
+	<update id="updateMenuState" parameterType="hashmap">
+		update sys_menu set isable=#{isable} 
+		<where>
+			<choose>
+				<when test="menu_id!=0">
+					menu_id=#{menu_id}
+				</when>
+				<otherwise>
+					menu_id=#{parent_menu_id} or parent_menu_id=#{parent_menu_id};
+				</otherwise>
+			</choose>
+		</where>
+	</update> -->
+	
+	<select id="getMenuByRoleId" resultType="com.evergrande.hdmp.sys.entity.Menu" parameterType="integer">
+		SELECT m.menu_id menu_id, m.up_menu_id parent_menu_id, m.menu_ch_name menu_ch_name, 
+			m.menu_en_name menu_en_name, m.menu_level menu_level, m.menu_img_url menu_img_url, m.menu_url menu_url, m.active_ind isable
+		FROM h62_sys_menu m, h62_role_menu_rela rm WHERE rm.menu_id=m.menu_id AND rm.role_id=#{role_id} 
+		ORDER BY m.menu_id; 
+	</select>
+	<!-- <select id="findMenuListByPage" resultType="com.evergrande.hdmp.sys.entity.Menu" parameterType="hashmap">
+		select * from 
+		(select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,0 menu_id,'' menu_ch_name,m.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,m.isable  
+		from sys_menu m 
+		where m.menu_level='1'   
+		union 
+		select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,sm.menu_id menu_id,sm.menu_ch_name menu_ch_name,sm.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,sm.isable  
+		from sys_menu m 
+		left join  sys_menu sm on sm.parent_menu_id=m.menu_id
+		where m.menu_level='1') a order by a.parent_menu_id,a.menu_id limit #{beginIndex},#{pageSize}; 
+	</select>
+	<select id="findTotalNum" resultType="integer">
+	select count(1) from 
+		(select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,0 menu_id,'' menu_ch_name,m.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,m.isable  
+		from sys_menu m 
+		where m.menu_level='1'   
+		union 
+		select  m.menu_id parent_menu_id,m.menu_ch_name parent_menu_name,sm.menu_id menu_id,sm.menu_ch_name menu_ch_name,sm.menu_en_name,m.menu_level,m.menu_url,m.menu_img_url,sm.isable  
+		from sys_menu m 
+		left join  sys_menu sm on sm.parent_menu_id=m.menu_id
+		where m.menu_level='1') a
+	</select> -->
+</mapper>

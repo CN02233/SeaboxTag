@@ -1,0 +1,302 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="campView" >
+	<select id="cntEvtList" resultType="int">
+		select count(0) from h62_campaign_info where user_id=#{user_id}
+		<if test="camp_context!=null and camp_context!=''">
+			and (camp_id like CONCAT('%','${camp_context}','%' ) or camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+	</select>
+
+	<select id="cntEvtAdList" resultType="int">
+
+		select count(0)
+		from
+		(select hci.* from
+		(select hsu.* from (select * from h62_sys_user_group where camp_admin_id=#{user_id}) hsug
+		left join h62_sys_user hsu
+		on hsug.group_id = hsu.user_group_id and user_id !=#{user_id}) grop_son_user,h62_campaign_info hci
+		where grop_son_user.user_id=hci.user_id and camp_status_cd!='01'
+		<if test="camp_context!=null and camp_context!=''">
+			and (hci.camp_id like CONCAT('%','${camp_context}','%' ) or hci.camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and hci.start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and hci.end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+		union all
+		select * from h62_campaign_info where user_id=#{user_id}
+		<if test="camp_context!=null and camp_context!=''">
+			and (camp_id like CONCAT('%','${camp_context}','%' ) or camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+		) hci
+	</select>
+
+	<select id="listEvtView" resultType="hashmap">
+		select hci.*,cc.camp_chnl_nm campTypeNm,cs.camp_status_nm statusNm,hsu.user_real_nm createUserNm from (
+		select
+		camp_id campId,
+		camp_nm campNm,
+		camp_desc campDesc,
+		date_format(start_dt,'%Y-%m-%d %H:%i') startDate,
+		date_format(end_dt,'%Y-%m-%d %H:%i') endDate,
+		indv_num hitCount,
+		camp_chnl_cd campType,
+		camp_status_cd status,
+		user_id createUser,
+		created_ts createDate,
+		updated_ts updateDate
+		from h62_campaign_info where user_id=#{user_id}
+		<if test="camp_context!=null and camp_context!=''">
+			and (camp_id like CONCAT('%','${camp_context}','%' ) or camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+		<if test="orderId!=null">
+			order by ${orderId} ${order_type}
+		</if>
+		<if test="orderId==null||orderId==''">
+			order by camp_id desc
+		</if>
+		limit #{beginIndex},#{pageSize}) hci left join h62_campaign_channel cc
+		on hci.campType = cc.camp_chnl_cd left join h62_campaign_status cs
+		on hci.status=cs.camp_status_cd left join h62_sys_user hsu
+		on hci.createUser=hsu.user_id
+	</select>
+
+	<select id="listEvtViewAd" resultType="hashmap">
+		select hci.camp_id campId,
+		hci.camp_nm campNm,
+		hci.camp_desc campDesc,
+		date_format(start_dt,'%Y-%m-%d %H:%i') startDate,
+		date_format(end_dt,'%Y-%m-%d %H:%i') endDate,
+		hci.indv_num hitCount,
+		hci.camp_chnl_cd campType,
+		hci.camp_status_cd status,
+		hci.user_id createUser,
+		hci.created_ts createDate,
+		hci.updated_ts updateDate ,
+		cc.camp_chnl_nm campTypeNm,
+		cs.camp_status_nm statusNm,
+		hsu.user_real_nm createUserNm
+		from
+		(select hci.* from
+		(select hsu.* from (select * from h62_sys_user_group where camp_admin_id=#{user_id}) hsug
+		left join h62_sys_user hsu
+		on hsug.group_id = hsu.user_group_id and user_id !=#{user_id}) grop_son_user,h62_campaign_info hci
+		where grop_son_user.user_id=hci.user_id and camp_status_cd!='01'
+		<if test="camp_context!=null and camp_context!=''">
+			and (hci.camp_id like CONCAT('%','${camp_context}','%' ) or hci.camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and hci.start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and hci.end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+		union all
+		select * from h62_campaign_info where user_id=#{user_id}
+		<if test="camp_context!=null and camp_context!=''">
+			and (camp_id like CONCAT('%','${camp_context}','%' ) or camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		<if test="start_date!=null and start_date!=''">
+			and start_dt <![CDATA[>= ]]> #{start_date}
+		</if>
+		<if test="end_date!=null and end_date!=''">
+			and end_dt <![CDATA[<= ]]> #{end_date}
+		</if>
+		<if test="orderId==null||orderId==''">
+			order by camp_id desc
+		</if>
+		<if test="orderId!=null">
+			order by ${orderId} ${order_type}
+		</if>
+		limit #{beginIndex},#{pageSize}
+		) hci
+		left join h62_campaign_channel cc on hci.camp_chnl_cd = cc.camp_chnl_cd
+		left join h62_campaign_status cs on hci.camp_status_cd=cs.camp_status_cd
+		left join h62_sys_user hsu on hci.user_id=hsu.user_id
+
+	</select>
+
+	<select id="getDetailData" resultType="hashmap">
+		select
+		ci.camp_id campId,
+		ci.camp_nm campNm,
+		ci.camp_desc campDesc,
+		date_format(ci.start_dt,'%Y-%m-%d %H:%i') startDt,
+		date_format(ci.end_dt,'%Y-%m-%d %H:%i') endDt,
+		ci.indv_num hitCount,
+		ci.camp_chnl_cd campChnlId,
+		cc.camp_chnl_nm campChnlNm,
+		ci.camp_inds_cd campIndsId,
+		ci.camp_status_cd status
+		from (select ci.* from h62_campaign_info ci
+		where ci.camp_id=#{campId}) ci  left join h62_campaign_channel cc  on ci.camp_chnl_cd = cc.camp_chnl_cd
+	</select>
+
+	<select id="getSendData" resultType="hashmap">
+		select camp_id campId,
+		indv_num indvNum,
+		send_num sendNum,
+		send_pcnt sendPcnt,
+		report_num repNum,
+		report_pcnt repPcnt,
+		reply_num replyNum,
+		reply_pcnt replyPcnt
+		from h62_campaign_sms_rslt where camp_id=#{campId}
+	</select>
+
+	<select id="getLabelData" resultType="hashmap">
+		select ctr.tag_id tagId,
+		ctr.tag_ctgy_id tagCtgyId,
+		ctr.tag_group_seq tagGrpSq,
+		ti.tag_nm tagNm,
+		tci.tag_ctgy_nm tagTyp
+		from
+		(select * from h62_campaign_tag_rela where camp_id=#{campId} order by tag_group_seq) ctr
+		left join h50_tag_info ti on ctr.tag_id=ti.tag_id
+		left join h50_tag_category_info tci on tci.tag_ctgy_id=ti.tag_ctgy_id where ti.active_ind=1
+		and (ti.enabled_dt <![CDATA[<= ]]> curdate() and ti.disabled_dt <![CDATA[>= ]]> curdate()) and tci.tag_ctgy_status=2
+	</select>
+
+	<select id="grpTagNms" resultType="hashmap">
+		select GROUP_CONCAT(tag_nm) tagNms,camp_id campId from (select hti.tag_nm,hci.camp_id from
+		(select * from h62_campaign_info where user_id=#{user_id}
+		<if test="camp_context!=null and camp_context!=''">
+			and (camp_id like CONCAT('%','${camp_context}','%' ) or camp_nm like CONCAT('%','${camp_context}','%' ))
+		</if>
+		) hci
+		left join h62_campaign_tag_rela hctr on hci.camp_id=hctr.camp_id
+		left join h50_tag_info hti on hctr.tag_id = hti.tag_id where hti.active_ind=1 and (hti.enabled_dt <![CDATA[<= ]]> curdate() and hti.disabled_dt<![CDATA[>= ]]>curdate())) tagRes
+		group by camp_id
+	</select>
+
+	<select id="grpTagNmsAd" resultType="hashmap">
+		select GROUP_CONCAT(hti.tag_nm) tagNms,hci.camp_id campId
+		from (select hci.* from
+		(select hsu.user_id from (select * from h62_sys_user_group where camp_admin_id=#{user_id}) sug
+		left join h62_sys_user hsu ON sug.group_id=hsu.user_group_id) users
+		, h62_campaign_info hci where hci.user_id = users.user_id ) hci
+		left join h62_campaign_tag_rela hctr on hci.camp_id=hctr.camp_id
+		left join h50_tag_info hti on hctr.tag_id = hti.tag_id where hti.active_ind=1 and (hti.enabled_dt <![CDATA[<= ]]> curdate() and hti.disabled_dt<![CDATA[>= ]]>curdate())
+		group by hci.camp_id
+	</select>
+
+
+	<insert id="copyData">
+		insert into h62_campaign_info (camp_id,camp_nm,camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,camp_status_cd,user_id,created_ts,updated_ts)
+		select #{camp_new_id},concat(camp_nm,'_����'),camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,#{camp_status_cd},#{user_id},#{created_ts},#{updated_ts} from h62_campaign_info where camp_id=#{camp_id}
+	</insert>
+
+	<insert id="copyTagData">
+		insert into h62_campaign_tag_rela (camp_id,tag_group_seq,tag_id,tag_ctgy_id,created_ts,updated_ts)
+		select  #{camp_new_id},tag_group_seq,tag_id,tag_ctgy_id,#{created_ts},#{updated_ts} from h62_campaign_tag_rela where camp_id=#{camp_id}
+	</insert>
+
+	<insert id="copyTmpData">
+		insert into h62_camp_template (camp_id,templt_id,templt_cont,created_ts,updated_ts)
+		select  #{camp_new_id},templt_id,templt_cont,#{created_ts},#{updated_ts} from h62_camp_template where camp_id=#{camp_id}
+	</insert>
+
+	<insert id="copyTmpParamData">
+		insert into h62_camp_template_paras (camp_id,templt_id,templt_para_nm,templt_para_value,created_ts,updated_ts,templt_para_seq)
+		select  #{camp_new_id},templt_id,templt_para_nm,templt_para_value,#{created_ts},#{updated_ts},templt_para_seq from h62_camp_template_paras where camp_id=#{camp_id}
+	</insert>
+
+	<insert id="moveToDelTb">
+		insert into h62_campaign_info_del (camp_id,camp_nm,camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,camp_status_cd,user_id,created_ts,updated_ts,del_ind)
+		select camp_id,camp_nm,camp_desc,camp_inds_cd,start_dt,end_dt,indv_num,camp_chnl_cd,templt_id,camp_status_cd,user_id,created_ts,updated_ts,'0' from h62_campaign_info where camp_id=#{camp_id}
+	</insert>
+	<delete id="delEvtData">
+		delete from h62_campaign_info where camp_id=#{camp_id}
+	</delete>
+
+	<select id="listTags" resultType="hashmap">
+		select ti.tag_id tagId,ti.tag_nm tagNm,concat('prt_',ti.tag_ctgy_id) parTagId from h50_tag_info ti, h50_tag_category_info cti where ti.active_ind=1
+		and (ti.enabled_dt <![CDATA[<= ]]> curdate() and ti.disabled_dt <![CDATA[>= ]]> curdate()) and ti.tag_ctgy_id = cti.tag_ctgy_id and cti.tag_ctgy_status=2
+	</select>
+
+	<select id="listTagCtgys" resultType="hashmap">
+		select CONCAT('prt_',a.tag_ctgy_id) tagId,a.tag_ctgy_nm tagNm,
+		IF(up_tag_ctgy_id is not NULL and up_tag_ctgy_id!='',CONCAT('prt_',a.up_tag_ctgy_id),null) parTagId from h50_tag_category_info a where a.tag_ctgy_status=2 order by a.tag_ctgy_id
+	</select>
+
+	<select id="listFavTags" resultType="hashmap">
+		select hti.tag_id tagId,hti.tag_nm tagNm,concat('prt_',hti.tag_ctgy_id) parTagId
+		from (select * from h62_user_tag_favorite where user_id=#{userId}) utf
+		left join h50_tag_info hti on utf.tag_ctgy_id = hti.tag_ctgy_id
+		where (hti.tag_id is not null and hti.active_ind=1)
+	</select>
+
+	<insert id="updateCamp" >
+		update h62_campaign_info set
+		camp_nm = #{camp_nm},start_dt=#{start_dt},end_dt=#{end_dt},indv_num=#{indv_num},updated_ts=#{updated_ts} ,templt_id=#{camp_templt_id}
+		<if test="camp_status_cd!=null and camp_status_cd!=''">
+			,camp_status_cd=#{camp_status_cd}
+		</if>
+		where camp_id=#{camp_id}
+	</insert>
+
+	<insert id="saveCampTag">
+		insert into h62_campaign_tag_rela (camp_id,tag_group_seq,tag_id,tag_ctgy_id,created_ts,updated_ts)
+		values (#{camp_id},#{tag_group_seq},#{tag_id},#{tag_ctgy_id},#{created_ts},#{updated_ts})
+	</insert>
+
+	<delete id="removeCampTag">
+		delete from h62_campaign_tag_rela where camp_id = #{camp_id}
+	</delete>
+
+	<select id="getCampTmpData" resultType="hashmap">
+		select hct.templt_id tmpId,hct.templt_cont model_content,hctp.templt_para_nm tmpParaNm,hctp.templt_para_value tmpParaVal from
+		(select * from h62_camp_template where camp_id=#{campId}) hct
+		left join h62_camp_template_paras hctp on hct.templt_id=hctp.templt_id and hct.camp_id=hctp.camp_id
+	</select>
+
+	<select id="isGrpAdmin" resultType="int">
+		select count(0) from (select * from h62_sys_user_group where camp_admin_id=#{user_id}) sug left join h62_sys_user su
+		on sug.group_id = su.user_group_id
+	</select>
+
+	<select id="userGrpInfo">
+		select * from h62_sys_user_group where camp_admin_id=#{user_id}
+	</select>
+
+	<insert id="workflowCamp" >
+		update h62_campaign_info set camp_status_cd=#{camp_status_cd},updated_ts=#{updated_ts} where camp_id=#{camp_id}
+	</insert>
+
+	<select id="getChnlDataList" resultType="hashmap">
+		select camp_chnl_cd chnlCd,camp_chnl_nm chnlNm from h62_campaign_channel
+	</select>
+
+	<select id="getIndsDataList" resultType="hashmap">
+		select camp_inds_cd indsCd,camp_inds_nm indsNm from h62_campaign_inds
+	</select>
+
+	<insert id="stopEvtData" >
+		update h62_campaign_info set camp_status_cd=#{camp_status_cd} where camp_id=#{camp_id}
+	</insert>
+
+	<select id="getCampTagRela" resultType="hashmap">
+		select tag_id tagId,tag_ctgy_id tagCtgyId from h62_campaign_tag_rela where camp_id=#{campId}
+	</select>
+</mapper>

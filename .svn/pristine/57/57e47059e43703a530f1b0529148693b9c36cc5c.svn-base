@@ -1,0 +1,42 @@
+package com.evergrande.hdmp.usertags.action.sms;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/20/16,7:51 PM
+ */
+public abstract class SmsResp {
+    private boolean  success;
+    private String rowResult;
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public static boolean  isSuccessReturnStr (String resultStr) {
+        return (resultStr != null) ? resultStr.matches("^0+$") : false;
+    }
+
+
+    public static String  getNoneNullValue (String valStr) {
+        if(null == valStr) {
+            return NULL_STR_FROM_API;
+        } else {
+            return valStr;
+        }
+    }
+
+    public String getRowResult() {
+        return rowResult;
+    }
+
+    public void setRowResult(String rowResult) {
+        this.rowResult = rowResult;
+    }
+
+    public static final String NULL_STR_FROM_API="null_from_API";
+
+}

@@ -1,0 +1,131 @@
+package com.evergrande.hdmp.usertags.hbase.entity;
+
+import com.evergrande.hdmp.usertags.hbase.HBaseUtil;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/16/16,2:52 PM
+ */
+public final class TUserInfo {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(TUserInfo.class);
+
+    private String userName;
+    private String mobileNo;
+    private String springPoint;
+
+
+
+
+    public final static TableName  tableName() {
+        return TableName.valueOf("h62_indv_info");
+    }
+
+    public final static class _CustInfo {
+
+        public final static byte[] ColFamily() {
+            return "cust_info".getBytes();
+        }
+
+        public final static byte[] col_name() { return  "indv_nm".getBytes(); }
+        public final static byte[] col_mobile() { return  "mov_tel".getBytes(); }
+
+    }
+
+
+    public final static class _Spring {
+
+        public final static byte[]  ColFamily() {
+            return "spring_ind".getBytes();
+        }
+
+        public final static byte[]  col_point() {  return "point".getBytes(); }
+    }
+
+
+    public static void createTableIfMissing(Connection connection) throws IOException {
+
+        List<byte[]> allColumnFamilies = new ArrayList<>();
+        allColumnFamilies.add( _CustInfo.ColFamily() );
+        allColumnFamilies.add( _Spring.ColFamily() );
+
+        HBaseUtil.createOrUpgradeTable(connection, tableName(), allColumnFamilies);
+
+    }
+
+
+    public static TUserInfo findById(Table userInfoTable, String userGUID) {
+
+        TUserInfo findObj = null;
+
+        Get  get = new Get( userGUID.getBytes() );
+        get.addFamily( _CustInfo.ColFamily() );
+        get.addFamily( _Spring.ColFamily() );
+
+        try {
+            Result result = userInfoTable.get(get);
+            if(result != null && !result.isEmpty()) {
+                findObj = new TUserInfo();
+                String mobile = HBaseUtil.getValueAsString(result, _CustInfo.ColFamily(), _CustInfo.col_mobile());
+                findObj.setMobileNo( mobile );
+
+                String name = HBaseUtil.getValueAsString(result, _CustInfo.ColFamily(), _CustInfo.col_name());
+                findObj.setUserName(name);
+
+                String point = HBaseUtil.getValueAsString(result, _Spring.ColFamily(), _Spring.col_point());
+                findObj.setSpringPoint(point);
+            }
+        } catch (IOException e) {
+            logger.error("failed to find record ", e);
+        }
+
+        return findObj;
+
+    }
+
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getMobileNo() {
+        return mobileNo;
+    }
+
+    public void setMobileNo(String mobileNo) {
+        this.mobileNo = mobileNo;
+    }
+
+    public String getSpringPoint() {
+        return springPoint;
+    }
+
+    public void setSpringPoint(String springPoint) {
+        this.springPoint = springPoint;
+    }
+
+
+    @Override
+    public String toString() {
+        StringBuffer sb = new StringBuffer();
+        sb.append("TUserInfo mobile:").append(mobileNo)
+                .append(", springPoint:").append(springPoint);
+        return  sb.toString();
+    }
+
+}

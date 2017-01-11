@@ -1,0 +1,50 @@
+package com.evergrande.hdmp.usertags.action.job.engine.stage0;
+
+import com.evergrande.hdmp.usertags.action.job.engine.BaseCampObj;
+
+/**
+ * Created by wuchh on 3/10/16.
+ */
+public class StepAOutput extends BaseCampObj {
+
+    StepAInput stepAInput;
+
+    long numsGUIDInKeyForCamp;
+
+    String campUsersKeyInRedis;
+
+    byte[]   redisBitSet;
+
+
+    public StepAInput getStepAInput() {
+        return stepAInput;
+    }
+
+    public void setStepAInput(StepAInput stepAInput) {
+        this.stepAInput = stepAInput;
+    }
+
+    public long getNumsGUIDInKeyForCamp() {
+        return numsGUIDInKeyForCamp;
+    }
+
+    public void setNumsGUIDInKeyForCamp(long numsGUIDInKeyForCamp) {
+        this.numsGUIDInKeyForCamp = numsGUIDInKeyForCamp;
+    }
+
+    public String getCampUsersKeyInRedis() {
+        return campUsersKeyInRedis;
+    }
+
+    public void setCampUsersKeyInRedis(String campUsersKeyInRedis) {
+        this.campUsersKeyInRedis = campUsersKeyInRedis;
+    }
+
+    public byte[] getRedisBitSet() {
+        return redisBitSet;
+    }
+
+    public void setRedisBitSet(byte[] redisBitSet) {
+        this.redisBitSet = redisBitSet;
+    }
+}

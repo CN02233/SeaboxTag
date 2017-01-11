@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<%@ page language='java' pageEncoding='UTF-8' contentType='text/html;charset=UTF-8' %>
+<html lang="en">
+<head>
+   <title>Bootstrap 实例 - 响应式表格</title>
+   <jsp:include  page="/pageStatic/evergrandeBase.jsp"/> 
+   
+</head>
+<body>
+<script src="${localProjectName}/pageJs/camp/campView/evtViewList.js?v=${revision}"></script>
+<link href="${localProjectName}/pageCss/camp/campView/evtView.css?v=${revision}" rel="stylesheet">
+<link href="${localProjectName}/pageCss/camp/common/dataTable.css?v=${revision}" rel="stylesheet">
+
+<!-- 弹出提示框 start -->
+<link href="${localProjectName}/pageCss/modal-div.css?v=${revision}" rel="stylesheet">
+<script src="${localProjectName}/pageJs/base/modal-div.js?v=${revision}"></script>
+<!-- 弹出提示框 end -->
+
+<input type="hidden" id="isMa" />
+<input type="hidden" id="userId" />
+
+<div id="titleDiv" class="body-title">活动总览
+	<div id="searchDiv" class="title-search-div" style="">
+		<input id="camp_context" class="form-control contextInput" type="text" value="" placeholder="请输入活动名称或活动ID" >
+		<label id="seachLabel" class="input_lable"></label><!-- CSS在evtView.css中定义 -->
+		<input type="hidden" id="start_date"/>
+		<input type="hidden" id="end_date"/>
+	</div>
+</div>
+<div id="splitDiv" class="split_title"><!-- title和内容页的分割线START-----splitDiv -->
+</div>	<!-- title和内容页的分割线END-----splitDiv -->
+
+<div id="operationBody" class="operation_div" >
+	<!--  ul class="first">  
+		<button type="button" class="btn btn-active" style="width:80px;" onclick="searchDataFromBack('/xw/evnRiv/reportData.do',createEventRiver)"  data-toggle="button">对比 </button>
+	</ul-->
+</div><!-- operationDiv end 操作按钮DIV -->
+
+<div class="table-responsive data-list-table-div">
+	<table class="evergrande-table"> <!-- table size and style are aligned in "evergrande-table" -->
+		<tbody>
+		<tr class="thread-tr">
+			<th class="title_td_css td_camp_id">
+				<span id="campId" onclick="orderList(this)" style="" class='glyphicon'>活动ID</span>
+			</th>
+			<th class="title_td_css td_camp_name">
+				<span id="campDesc" onclick="orderList(this)" style="" class='glyphicon'>活动名称</span>
+			</th>
+			<th class="title_td_css td_camp_date_and_time">
+				<label id="startDateLabel" style="" data-date="2016-02-21"
+					   class='glyphicon glyphicon-calendar'></label>
+				<span id="startDate" onclick="orderList(this)" style="" class='glyphicon'>开始时间</span>
+			</th>
+			<th class="title_td_css td_camp_date_and_time">
+				<label id="endDateLabel"  style="" class='glyphicon glyphicon-calendar'></label>
+				<span id="endDate" onclick="orderList(this)" style="" class='glyphicon'>结束时间</span>
+			</th>
+			<th class="title_td_css td_camp_condition_desc">
+				<span class='glyphicon' style="cursor:default;">人群描述</span>
+			</th>
+			<th class="title_td_css td_camp_action_way">
+				<span id="campType" onclick="orderList(this)" style="" class='glyphicon'>渠道</span>
+			</th>
+			<th class="title_td_css td_camp_user_count">
+				<span id="hitCount" onclick="orderList(this)" style="" class='glyphicon'>人群数量</span>
+			</th>
+			<th class="title_td_css td_camp_status">
+				<span id="status" onclick="orderList(this)" style="" class='glyphicon'>状态</span>
+			</th>
+			<th class="title_td_css td_camp_creator">
+				<span id="userId" onclick="orderList(this)" style="" class='glyphicon'>创建人</span>
+			</th>
+			<th class="title_td_css td_camp_operation" style="padding-bottom:0px;">
+				<span id="userId" onclick="orderList(this)" style="" class='glyphicon'>操作</span>
+			</th>
+		</tr>
+		</tbody>
+	</table>
+	<table class="table table-hover evergrande-table"><!-- table size and style are aligned in "evergrande-table" -->
+
+		<tbody id="tbody">
+
+
+		</tbody>
+	</table>
+	<div id="paginationDiv" class="pageit_div">
+	</div>
+</div>
+
+
+<form>
+	
+</form>
+
+<jsp:include  page="/pageStatic/evergrandeBaseOnload.jsp"/>
+
+</body>
+</html>
+			

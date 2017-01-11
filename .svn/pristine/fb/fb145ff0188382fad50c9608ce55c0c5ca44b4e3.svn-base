@@ -1,0 +1,42 @@
+package com.evergrande.hdmp.usertags.action.sms;
+
+import com.evergrande.hdmp.usertags.hbase.entity.TSmsAction;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/19/16,10:24 AM
+ */
+public enum  TemplatePara {
+
+    USER_NAME("#username#",         TSmsAction._User.ColFamily(),  TSmsAction._User.col_name() ),
+    SPRING_POINT("#point_current#", TSmsAction._User.ColFamily(),  TSmsAction._User.col_springPoint() );
+
+    private String template;
+    private byte[] columnFamily;
+    private byte[] columnQualifier;
+
+    TemplatePara(String  template, byte[] columnFamily, byte[] columnQualifier) {
+        this.template = template;
+        this.columnFamily = columnFamily;
+        this.columnQualifier = columnQualifier;
+    }
+
+    public String getTemplateChar() {
+        return template;
+    }
+
+
+    public String replaceValue(String orig, String replaceValue) {
+        String result = orig.replaceAll(template, replaceValue);
+        return result;
+    }
+
+    public byte[]  getColumnFamily() {
+        return columnFamily;
+    }
+
+    public byte[]  getColumnQualifier() {
+        return columnQualifier;
+    }
+
+}

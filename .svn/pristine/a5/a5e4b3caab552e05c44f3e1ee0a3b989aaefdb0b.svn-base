@@ -1,0 +1,15 @@
+package com.evergrande.hdmp.camp.service;
+
+import java.util.Map;
+
+import com.evergrande.hdmp.base.service.BaseService;
+
+public interface CampRecycleService {
+
+	String listMainData(Map<String, Object> paramMap);
+
+	boolean rollbackData(Map<String, Object> paramMap);
+
+	boolean deleteCamp(Map<String, Object> paramMap);
+
+}

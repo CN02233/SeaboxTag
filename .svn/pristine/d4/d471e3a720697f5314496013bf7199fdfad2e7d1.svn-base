@@ -1,0 +1,98 @@
+package com.evergrande.hdmp.usertags.utils;
+
+import com.evergrande.hdmp.usertags.entity.TagCategoryLastLevel;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/5/16,5:46 PM
+ */
+public class BeanSorterTest {
+
+
+    private final static Logger logger = LoggerFactory.getLogger(BeanSorterTest.class);
+
+    private static List<TagCategoryLastLevel> categories;
+
+    @BeforeClass
+    public static void initTestSamples() {
+        categories = new ArrayList<TagCategoryLastLevel>() {
+            {
+                add(createAnTagCategoryLastLevel(12, "Tag-cat1 ", 112.234));
+                add(createAnTagCategoryLastLevel(23, "#cat1 ", 2.1234));
+                add(createAnTagCategoryLastLevel(0, "-cat1 ", 34.234));
+                add(createAnTagCategoryLastLevel(1, "Tag-1cat1 ", 0.234));
+                add(createAnTagCategoryLastLevel(9, "Tag3-cat1 ", 0));
+                add(createAnTagCategoryLastLevel(100, "Ta5g-cat1 ", 67.234));
+            }
+        };
+    }
+
+    private static TagCategoryLastLevel createAnTagCategoryLastLevel(int id, String name, double cover) {
+        TagCategoryLastLevel t = new TagCategoryLastLevel();
+        t.setTag_ctgy_id(id);
+        t.setTag_ctgy_nm(name);
+        t.setCovered_rate(cover);
+        return t;
+    }
+
+
+    @Test
+    public void testSortByName() {
+
+        BeanSorter<TagCategoryLastLevel> tagCategorySorter = BeanSorter.createASorter("tag_ctgy_id", true, TagCategoryLastLevel.class);
+        Assert.notNull(tagCategorySorter);
+        Collections.sort(categories, tagCategorySorter);
+        logger.debug("############ after sort by tag_ctgy_id ################");
+        for (TagCategoryLastLevel l : categories) {
+            logger.debug(" l : {}", l);
+        }
+
+    }
+
+    @Test
+    public void testSortById() {
+
+        BeanSorter<TagCategoryLastLevel> tagCategorySorter = BeanSorter.createASorter("tag_ctgy_nm", true, TagCategoryLastLevel.class);
+        Assert.notNull(tagCategorySorter);
+        Collections.sort(categories, tagCategorySorter);
+        logger.debug("############ after sort by tag_ctgy_nm ################");
+        for (TagCategoryLastLevel l : categories) {
+            logger.debug(" l : {}", l);
+        }
+
+
+    }
+
+    @Test
+    public void testSortByCover() {
+
+        BeanSorter<TagCategoryLastLevel> tagCategorySorter = BeanSorter.createASorter("covered_rate", true, TagCategoryLastLevel.class);
+
+        Assert.notNull(tagCategorySorter);
+        Collections.sort(categories, tagCategorySorter);
+        logger.debug("############ after sort by covered_rate ################");
+        for (TagCategoryLastLevel l : categories) {
+            logger.debug(" l : {}", l);
+        }
+
+    }
+
+    @Test
+    public void testSortByNoneExistField() {
+
+        BeanSorter<TagCategoryLastLevel> tagCategorySorter = BeanSorter.createASorter("this_is_an_error_case_test_with_None_exist_field", true, TagCategoryLastLevel.class);
+
+        Assert.isNull( tagCategorySorter );
+
+    }
+
+}

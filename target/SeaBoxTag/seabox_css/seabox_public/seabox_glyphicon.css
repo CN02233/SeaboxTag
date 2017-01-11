@@ -1,0 +1,9 @@
+
+.seabox_glyphicon{
+    border:0px;
+}
+
+.seabox_glyphicon.seabox_glyphicon_search{
+    border:0px solid;
+    background:#77D5D4;
+}

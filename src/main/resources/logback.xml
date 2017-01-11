@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<property name="app_name" value="grande-hdmp-web"/>
+	<contextName>${app_name}</contextName>
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger %msg%n</pattern>
+		</encoder>
+	</appender>
+	<appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${catalina.base}/logs/${app_name}.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${catalina.base}/logs/${app_name}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxHistory>100</maxHistory>
+		 	<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+            	<maxFileSize>50MB</maxFileSize>
+         	</timeBasedFileNamingAndTriggeringPolicy>     
+		</rollingPolicy>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger %msg%n</pattern>
+		</encoder>
+	</appender>
+	
+	
+	
+	<logger  name="com.seabox" level="debug"/>
+	<logger  name="com.seabox.tagsys" level="debug" />
+	<logger  name="com.seabox.tagsys.usertags" level="debug" />
+	<logger name="com.alibaba.dubbo" level="WARN" />
+	<logger name="java.sql.Connection" level="debug" />
+	<logger name="java.sql.PreparedStatement" level="debug" />
+	<logger name="org.apache.zookeeper" level="OFF" /><!-- 上线时需将其修改为其他级别 -->
+	<logger name="org.apache.hadoop" level="WARN" /><!-- 上线时需将其修改为其他级别 -->
+	<logger name="org.apache.hadoop.hbase" level="WARN" />
+	<logger name="com.alibaba" level="ERROR" />
+	
+	<root level="debug">
+		<appender-ref ref="STDOUT" />
+		<!-- 生产环境将此注释删除-->
+		<appender-ref ref="FILE" />
+		
+	</root>
+</configuration>

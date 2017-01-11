@@ -1,0 +1,193 @@
+package com.evergrande.hdmp.usertags.action.job.engine.stage0;
+
+import com.evergrande.hdmp.usertags.action.job.engine.ProcessStep;
+import com.evergrande.hdmp.usertags.logicquery.TagCondition;
+import com.evergrande.hdmp.usertags.logicquery.impl.TagQueryResultCacheImpl;
+import com.evergrande.hdmp.usertags.service.BigTaskBreakUtil;
+import com.evergrande.hdmp.usertags.service.TaskBreakExecutor;
+import com.evergrande.hdmp.usertags.service.impl.CacheServiceRedisImpl;
+import com.evergrande.hdmp.usertags.service.impl.TagOpWithRedisVisitor;
+import com.evergrande.hdmp.usertags.utils.SingletonBean;
+import com.evergrande.hdmp.usertags.utils.UserTagUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import redis.clients.jedis.*;
+
+import java.util.BitSet;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * Created by wuchh on 3/10/16.
+ */
+@SingletonBean
+public class StepAProcess_SaveGuidsToRedis implements ProcessStep<StepAInput, StepAOutput> {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(StepAProcess_SaveGuidsToRedis.class);
+
+
+    @Autowired
+    private JedisPool jedisPool;
+
+
+
+    private final int  MAX_THREADS_FOR_SUB = 10;
+
+
+    @Override
+    public void beforeProcess() {
+
+    }
+
+    @Override
+    public StepAOutput process(StepAInput stepAInput) {
+
+        final String campId = stepAInput.getCampId();
+        TagCondition condition = stepAInput.getCondition();
+
+        logger.info("process() start  for campId: {}", campId);
+
+
+        try (Jedis jedis = jedisPool.getResource()) { // auto close Jedis resource
+
+            TagQueryResultCacheImpl result = CacheServiceRedisImpl.controllableQueryResultFromTagCondition(condition, jedis);
+            final String retJedisKey = result.getKey();
+            jedis.persist(retJedisKey); // Temporary cancel expire, we can expire again for this key manually later
+            Long numsJedisByCondition = jedis.bitcount(retJedisKey);
+
+            logger.info("commitAndSaveCacheForCampaign() progress(redis info get OK) on-going  for campId: {}, numsJedisByCondition={}", campId, numsJedisByCondition);
+
+
+            if(jedis != null) {
+                byte[] redisBitSet = jedis.get(retJedisKey.getBytes());
+                jedis.bitop(BitOP.OR, CacheServiceRedisImpl.getCampBitMap( campId ), retJedisKey);
+                final BitSet localBitSet = CacheServiceRedisImpl.fromByteArrayReverse(redisBitSet);
+
+                int numsLocalBitSet = localBitSet.cardinality();
+                logger.info("commitAndSaveCacheForCampaign() progress(redis -> local BitSet) on-going  for campId: {}, numsJedisByCondition={},  numsLocalBitSet={} ", campId, numsJedisByCondition, numsLocalBitSet);
+
+                //##########################  use Redis instead of hBase for quick Save List of GUIDs
+
+                final String campUsersKeyInRedis = CacheServiceRedisImpl.getCampUsersRedisKey(campId);
+
+                TaskBreakExecutor breakExecutor = new TaskBreakExecutor("commitAndSaveCacheForCampaign-subTasks:campId="  + campId,  MAX_THREADS_FOR_SUB, localBitSet.length(), true ) {
+
+                    Jedis[] jedisSubs;
+
+                    @Override
+                    protected void init() {
+                        jedisSubs = new Jedis[ MAX_THREADS_FOR_SUB ];
+                        for(int i=0; i< jedisSubs.length; ++i) {
+                            jedisSubs[i] = jedisPool.getResource();
+                        }
+                    }
+
+                    @Override
+                    public void execOne(int taskId, long index) {
+                        // dummy, we use  execRange
+                    }
+
+                    @Override
+                    public void onComplete(int taskId) {
+                        jedisSubs[ taskId ].close();
+                    }
+
+                    final int BATCH_OP_SIZE_REDIS = 9000;
+
+                    private void flushGuidsToRedis(int taskId, Jedis jedisOwn, AtomicReference<Pipeline> pipelineRef) {
+
+                        Pipeline pipeline = pipelineRef.get();
+                        List<Object> guids = pipeline.syncAndReturnAll();
+                        pipeline = jedisOwn.pipelined();
+                        String[] userGUIDs = new String[ guids.size() ];
+                        int errorCount = 0;
+                        int okCount = 0;
+                        for(int i=0; i<guids.size(); ++i ) {
+                            Object guid = guids.get(i);
+                            if(guid == null) {
+                                ++errorCount;
+                                logger.error("error on got null GUID while mapping from cache: {}", UserTagUtils.REDIS_KEY_INDEX_TO_USER_GUID_MAP);
+                            } else {
+                                ++okCount;
+                                userGUIDs[i] = (String) guid;
+                            }
+                        }
+                        countError(taskId, errorCount);
+                        countComplete( taskId, okCount );
+
+                        pipeline.lpush(campUsersKeyInRedis, userGUIDs);
+                        pipeline.sync();
+                        pipelineRef.set( jedisOwn.pipelined() );
+                    }
+
+                    @Override
+                    public void execRange(int taskId, long start, long end) {
+
+                        AtomicReference<Pipeline> pipelineRef = new AtomicReference<>();
+                        pipelineRef.set( jedisSubs[taskId].pipelined() );
+
+                        int nBatch = 0;
+                        for(long l=start; l<end;){
+                            countStart( taskId );
+                            int setIndex = localBitSet.nextSetBit( (int)l );
+                            if(setIndex>=end) {
+                                break;
+                            }
+
+                            ++nBatch;
+
+                            Response<String> userGUIDResp = pipelineRef.get().hget(UserTagUtils.REDIS_KEY_INDEX_TO_USER_GUID_MAP, String.valueOf(setIndex));
+                            if(nBatch>=BATCH_OP_SIZE_REDIS) {
+                                nBatch = 0; //reset
+                                flushGuidsToRedis(taskId, jedisSubs[taskId], pipelineRef );
+                            }
+
+                            l = setIndex+1;
+                        }
+
+                        if(nBatch> 0) { // there's remaining items tobe flush
+                            nBatch = 0; //reset
+                            flushGuidsToRedis(taskId, jedisSubs[taskId], pipelineRef );
+                        }
+
+                    }
+
+
+                } ;
+
+                BigTaskBreakUtil.breakExec(breakExecutor);
+
+                long numsGUIDInKeyForCamp = jedis.llen( campUsersKeyInRedis );
+
+                logger.info("process() Done for campId: {}, numsJedisByCondition={},  numsGUIDInKeyForCamp={} dumpProgress={}", campId, numsJedisByCondition, numsGUIDInKeyForCamp, breakExecutor.dumpProgress() );
+
+                StepAOutput  output = new StepAOutput();
+                output.setCampId(campId);
+                output.setStepAInput( stepAInput );
+                output.setCampUsersKeyInRedis( campUsersKeyInRedis );
+                output.setRedisBitSet( redisBitSet );
+                output.setNumsGUIDInKeyForCamp( numsGUIDInKeyForCamp );
+
+                CacheServiceRedisImpl.safeExpireRedisKey(jedis, retJedisKey);
+
+                return output;
+
+            } else {
+
+                logger.error("commitAndSaveCacheForCampaign() Failed for campId: {}, Redis access have issue", campId);
+
+            }
+
+
+        }
+
+        return null;
+    }
+
+    @Override
+    public void afterProcess() {
+
+    }
+}

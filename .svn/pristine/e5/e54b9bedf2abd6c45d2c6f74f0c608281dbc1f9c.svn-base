@@ -1,0 +1,197 @@
+package com.evergrande.hdmp.usertags.action.sms.impl;
+
+import com.evergrande.hdmp.usertags.action.sms.*;
+import com.evergrande.sms.SMSService;
+import com.evergrande.sms.entity.Reply;
+import com.evergrande.sms.model.request.SmsRequest;
+import com.evergrande.sms.model.request.SmsResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/17/16,5:51 PM
+ */
+@Service
+public class SmsApiWrapServiceImpl implements SmsApiWrapService {
+
+    private    static  final Logger logger = LoggerFactory.getLogger(SmsApiWrapServiceImpl.class);
+
+
+    public static final String HDMP_SMS_CHANEL_CODE = "001";
+
+    @Autowired
+    private SMSService smsService;
+
+    @Value("#{configProperties['conf.SmsApiWrapServiceImpl.itemCountPerRemoteApiQuery']}")
+    private int  itemCountPerRemoteApiQuery;
+
+    @Value("#{configProperties['conf.SmsApiWrapServiceImpl.busyWorkIntervalMilliSeconds']}")
+    private int busyWorkIntervalMilliSeconds;
+
+    @Value("#{configProperties['conf.SmsApiWrapServiceImpl.idleIntervalMilliSeconds']}")
+    private int idleIntervalMilliSeconds;
+
+    @Value("#{configProperties['conf.SmsApiWrapServiceImpl.limitSmsSendWithinOneHour']}")
+    private int limitSmsSendWithinOneHour;
+
+
+    private SmsRequest encodeRequest(String  seqNumber, Map<String,Object> otherParasBody ){
+        SmsRequest request= new SmsRequest();
+        Map<String,Object> headerMap = new HashMap<>();
+        headerMap.put("channel_code", HDMP_SMS_CHANEL_CODE);
+        headerMap.put("serial_no", seqNumber);
+        headerMap.put("tran_time", new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis())));
+        request.setRequestHead(headerMap);
+        request.setRequestBody(otherParasBody);
+
+        return  request;
+    }
+
+    private SmsRequest encodeRequest(String  seqNumber, int  batchCount ){
+
+        Map<String,Object> requestBody = new HashMap<>();
+        requestBody.put("count", batchCount);
+
+        SmsRequest request = encodeRequest(seqNumber, requestBody);
+
+        return  request;
+    }
+
+
+
+    /**
+     * 发送短信
+     */
+    @Override
+    public RespMsgSmsSend sendMessage(String moblieNo, String smsModelId, String  seqNumber, String smsModelParameters, String extendaccessnum) {
+
+
+
+        Map<String,Object> requestBody = new HashMap<>();
+        requestBody.put("mobile_no", moblieNo);
+        requestBody.put("message", smsModelParameters);
+        requestBody.put("model_code", smsModelId);
+
+        String send_time = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date(System.currentTimeMillis()));
+        String send_type = "";
+        requestBody.put("send_time", send_time);
+        requestBody.put("send_type", send_type);
+        requestBody.put("extendaccessnum", extendaccessnum);
+
+        if(logger.isTraceEnabled()) {
+            logger.trace("------ invoke smsService.sendMessage() with: mobileNo:{} , smsModelId={}, seqNumber={} smsModelParameters={}", new String[]{
+                    moblieNo,
+                    smsModelId,
+                    seqNumber,
+                    smsModelParameters
+            });
+        }
+
+        SmsResponse response = smsService.sendMessage(  encodeRequest(seqNumber, requestBody));
+
+        Map<String,Object>  respMap = responseToMap(response);
+        String res1 = (String)respMap.get("return_code");
+
+        RespMsgSmsSend result = RespMsgSmsSend.createFromResponseMap( respMap );
+
+        if( !result.isSuccess() ) {
+            logger.warn("------ smsService.sendMessage() return Error with: mobileNo:{} , smsModelId={}, seqNumber={} smsModelParameters={}, api_RowResult={}", new String[]{
+                    moblieNo,
+                    smsModelId,
+                    seqNumber,
+                    smsModelParameters,
+                    result.getRowResult()
+            });
+        }
+
+
+        return result;
+    }
+
+
+
+
+    /**
+     * 查询回执
+     */
+    @Override
+    public RespMsgSmsRecv querySmsRecvMsg() {
+        SmsResponse response = smsService.report( encodeRequest("003_querySmsRecvMsg", getItemCountPerRemoteApiQuery() ));
+
+        Map<String,Object>  respMap = responseToMap(response);
+
+        RespMsgSmsRecv result = RespMsgSmsRecv.createFromResponseMap( respMap );
+
+        return result;
+    }
+
+    /**
+     * 查询回复
+     */
+    @Override
+    public RespMsgSmsReply querySmsReplyMsg() {
+
+        SmsResponse response = smsService.reply(  encodeRequest("004_querySmsAckMsg", getItemCountPerRemoteApiQuery() ));
+
+        Map<String,Object>  respMap = responseToMap(response);
+
+        RespMsgSmsReply result = RespMsgSmsReply.createFromResponseMap( respMap );
+        return result;
+    }
+
+
+    public static Map<String,Object> responseToMap(SmsResponse response){
+        Map<String,Object> map=new HashMap<String,Object>();
+        if(response.getResponseBody()!=null){
+            map.putAll(response.getResponseBody());
+        }
+        if(response.getResponseHead()!=null){
+            map.putAll(response.getResponseHead());
+        }
+        return map;
+    }
+
+
+
+
+    public int  getItemCountPerRemoteApiQuery() {
+        return itemCountPerRemoteApiQuery;
+    }
+
+    public void setItemCountPerRemoteApiQuery(int itemCountPerRemoteApiQuery) {
+        this.itemCountPerRemoteApiQuery = itemCountPerRemoteApiQuery;
+    }
+
+    public int getBusyWorkIntervalMilliSeconds() {
+        return busyWorkIntervalMilliSeconds;
+    }
+
+    public void setBusyWorkIntervalMilliSeconds(int busyWorkIntervalMilliSeconds) {
+        this.busyWorkIntervalMilliSeconds = busyWorkIntervalMilliSeconds;
+    }
+
+    public int getIdleIntervalMilliSeconds() {
+        return idleIntervalMilliSeconds;
+    }
+
+    public void setIdleIntervalMilliSeconds(int idleIntervalMilliSeconds) {
+        this.idleIntervalMilliSeconds = idleIntervalMilliSeconds;
+    }
+
+    public int getLimitSmsSendWithinOneHour() {
+        return limitSmsSendWithinOneHour;
+    }
+
+    public void setLimitSmsSendWithinOneHour(int limitSmsSendWithinOneHour) {
+        this.limitSmsSendWithinOneHour = limitSmsSendWithinOneHour;
+    }
+}

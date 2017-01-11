@@ -1,0 +1,7 @@
+package com.evergrande.hdmp.sys.util;
+
+public class GroupID {
+
+	public static final int NONE_GROUP = 0;
+	
+}

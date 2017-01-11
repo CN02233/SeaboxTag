@@ -1,0 +1,88 @@
+
+.detail-title-foot{
+	margin-top:1px;
+	margin-right:3%;
+	float:right;
+	text-align:right;
+	width:25%;
+	height:100px;
+}
+
+.detail-info{
+	margin-left:3%;
+	margin-right:3%;
+	margin-top:10px;
+	background-color:#eff3f6;
+	width:94%;
+	height:60px;
+	float:left;
+	line-height:60px;
+}
+.detail-info>ul>li{
+	width:25%;
+	float:left;
+	list-style-type:none;
+}
+
+.indv-info{
+	margin-left:5%;
+	margin-right:5%;
+	float:left;
+	width:90%;
+}
+
+.indv-info>span{
+	font-weight: bold;
+	display:block;
+	border-bottom:1px solid #E0E0E0;
+}
+
+.send-info{/*发送情况table*/
+	width:100%;
+	border: 0px solid #ccc;
+	float:left;
+}
+
+.send-info-td{/*发送情况table中td样式*/
+	text-align:left;
+	border:0;
+}
+
+.send-info-val{
+	font-size:20px;
+	font-weight:bold;
+}
+.label-info-div{/*标签情况DIV样式*/
+	border:0px solid black;
+	margin-left:5%;
+	margin-right:5%;
+	float:left;
+	width:90%;
+}
+
+.check-info{
+	border:0px solid red;
+	height:100%;
+	width:38%;
+	float:left
+}
+
+.check-info-list{
+	width:100%;
+	height:90%;
+	border:1px solid #E0E0E0;
+	border-radius: 10px; 
+	overflow:auto;
+}
+
+.check-info-list>ul{
+	margin:0;
+	padding:0;
+	list-style:none;
+}
+
+.check-info-list>ul>li{
+	margin-left:5%;
+	margin-right:5%;
+	width:90%;
+}

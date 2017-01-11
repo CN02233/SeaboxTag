@@ -1,0 +1,21 @@
+package com.evergrande.hdmp.usertags.action.sms;
+
+
+/**
+ * @author Changhua, Wu
+ *         Created on: 2/17/16,5:03 PM
+ */
+public interface SmsApiWrapService extends SmsAction{
+
+
+    RespMsgSmsRecv querySmsRecvMsg();
+
+    int getBusyWorkIntervalMilliSeconds();
+
+    int getIdleIntervalMilliSeconds();
+
+    RespMsgSmsReply querySmsReplyMsg();
+
+
+
+}

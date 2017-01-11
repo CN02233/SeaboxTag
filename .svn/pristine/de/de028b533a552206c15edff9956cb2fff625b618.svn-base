@@ -1,0 +1,342 @@
+package com.evergrande.hdmp.usertags.service.impl;
+
+import com.evergrande.hdmp.usertags.logicquery.TagCondition;
+import com.evergrande.hdmp.usertags.logicquery.UsersDistributeByTag;
+import com.evergrande.hdmp.usertags.logicquery.impl.Match;
+import com.evergrande.hdmp.usertags.logicquery.impl.TagConditionBase;
+import com.evergrande.hdmp.usertags.service.BigTaskBreakUtil;
+import com.evergrande.hdmp.usertags.service.TaskBreakExecutor;
+import com.evergrande.hdmp.usertags.utils.UserTagUtils;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.*;
+
+
+import org.mockito.Matchers;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.*;
+
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * This Test requires  Redis on localhost  started on 7777 port.
+ *  switch the flag "useRealRedis = true"  to turn on Real Redis
+ *  switch the flag "useRealRedis = false" to use BitSet to simulate Redis Bit Caches
+ *
+ * @author Changhua, Wu
+ *         Created on: 1/26/16,10:09 AM
+ */
+
+public class CacheServiceRedisImplTest {
+
+
+    private final static Logger logger = LoggerFactory.getLogger(CacheServiceRedisImplTest.class);
+
+
+    private static JedisPool jedisPool;
+
+    private static CacheServiceRedisImpl cacheServiceRedis;
+
+    private static boolean  useRealRedis = false;
+
+    private final static HashMap<String, BitSet> mockCacheStore = new HashMap<>();
+
+    @BeforeClass
+    public static void  initializeRedisKeyCache() {
+
+        if(useRealRedis) {
+            jedisPool = new JedisPool("120.26.215.198", 7777);
+        } else {
+            jedisPool = mock(JedisPool.class);
+            Jedis jedis = mock(Jedis.class);
+            when(jedisPool.getResource()).thenReturn( jedis );
+            Pipeline pipeline = mock(Pipeline.class);
+            when( jedis.pipelined() ).thenReturn( pipeline );
+
+            when(pipeline.setbit(anyString(), anyInt(), Matchers.eq(true))).thenAnswer(
+                    new Answer< Response<Boolean> >() {
+
+                        @Override
+                        public Response<Boolean> answer(InvocationOnMock invocationOnMock) throws Throwable {
+                            Object[] args = invocationOnMock.getArguments();
+                            String key = (String)args[0];
+                            long bit = (long) args[1];
+                            if(!mockCacheStore.containsKey( key )) {
+                                mockCacheStore.put(key, new BitSet());
+                            }
+                            mockCacheStore.get( key ).set((int)bit, true);
+                            return null;
+                        }
+                    }
+            );
+            
+            when(pipeline.bitcount( anyString() )).thenAnswer(
+                    new Answer< Response<Long> >() {
+
+                        @Override
+                        public Response<Long> answer(InvocationOnMock invocationOnMock) throws Throwable {
+                            Object[] args = invocationOnMock.getArguments();
+                            String key = (String)args[0];
+                            if(!mockCacheStore.containsKey( key )) {
+                                return null;
+                            } else {
+                                Builder builder = new Builder() {
+                                    @Override
+                                    public Object build(Object data) {
+                                        return Long.valueOf( data.toString() );
+                                    }
+                                };
+
+                                Response<Long> resp = new Response<>(builder);
+                                int  bitCount = mockCacheStore.get(key).cardinality();
+                                resp.set( Long.valueOf(bitCount) );
+                                return resp;
+                            }
+
+                        }
+
+                    }
+            );
+
+
+            Answer<Long>  bitopAnswer = new Answer<Long>() {
+                @Override
+                public Long answer(InvocationOnMock invocationOnMock) throws Throwable {
+                    Object[] args = invocationOnMock.getArguments();
+                    BitOP op = (BitOP) args[0];
+                    String resultKey = (String) args[1];
+                    String[] srcKeys = null;
+                    if (args[2] instanceof String[]) {
+                        srcKeys = (String[]) args[2];
+                    } else if (args[2] instanceof String) {
+                        srcKeys = new String[args.length - 2];
+                        for (int n = 2; n < args.length; ++n) {
+                            srcKeys[n - 2] = (String) args[n];
+                        }
+                    }
+
+                    if (op.equals(BitOP.OR)) {
+                        BitSet resultBit = new BitSet();
+                        for (String srcKey : srcKeys) {
+                            resultBit.or(mockCacheStore.get(srcKey));
+                        }
+                        mockCacheStore.put(resultKey, resultBit);
+                    } else if (op.equals(BitOP.AND)) {
+                        BitSet resultBit = (BitSet) mockCacheStore.get(srcKeys[0]).clone();
+                        for (int i = 1; i < srcKeys.length; ++i) {
+                            resultBit.and(mockCacheStore.get(srcKeys[i]));
+                        }
+                        mockCacheStore.put(resultKey, resultBit);
+                    }
+                    return null;
+                }
+            };
+
+            when(jedis.bitop((BitOP) anyObject(), anyString(), Matchers.<String>anyVararg())).thenAnswer(
+                    bitopAnswer
+            );
+
+            when(pipeline.bitop((BitOP) anyObject(), anyString(), Matchers.<String>anyVararg())).thenAnswer(
+                    bitopAnswer
+            );
+
+            when( jedis.bitcount(anyString()) ).thenAnswer(
+                    new Answer<Long>() {
+                        @Override
+                        public Long answer(InvocationOnMock invocationOnMock) throws Throwable {
+                            Object[] args = invocationOnMock.getArguments();
+
+                            String resultKey = (String) args[0];
+
+                            return (long) mockCacheStore.get(resultKey).cardinality();
+                        }
+                    }
+            );
+
+        }
+
+        cacheServiceRedis = new CacheServiceRedisImpl();
+
+        cacheServiceRedis.setJedisPool( jedisPool );
+
+        Jedis jedis = jedisPool.getResource();
+        try {
+
+            Pipeline pipeline = jedis.pipelined();
+            for(int i=0; i<300000; ++i) {
+
+
+                String tag = null;
+
+                if(i%2==0 ) {
+                    if(i%16==0) {
+                        tag = "Person:Unknown";
+                    } else {
+                        tag = "Person:FeMale";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                } else {
+                    if(i%9==0) {
+                        tag = "Person:Unknown";
+                    } else {
+                        tag = "Person:Male";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                }
+
+                if(i%3==0 || i%7==0) {
+                    if(i%4==0) {
+                        tag = "Area:Unknown";
+                    } else {
+                        tag = "Area:GuZhou";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                } else {
+                    if(i%10==0) {
+                        tag = "Area:Unknown";
+                    } else if(i%4==0) {
+                        tag = "Area:ShangHai";
+                    } else {
+                        tag = "Area:ShenZheng";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                }
+
+
+                if(i%5==0 || i%2==0) {
+                    if(i%3==0) {
+                        tag = "Age:Unknown";
+                    } else {
+                        tag = "Age:20-30";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                } else {
+                    if(i%9==0) {
+                        tag = "Age:Unknown";
+                    } else if(i%7==0) {
+                        tag = "Age:10-20";
+                    } else {
+                        tag = "Age:30-40";
+                    }
+                    int tagId = getTagIdByTagName(tag);
+                    pipeline.setbit(UserTagUtils.getCacheKeyByTagId(tagId), i, true);
+                }
+
+
+                if(i%10000==0) {
+                    pipeline.sync();
+                    pipeline = jedis.pipelined();
+                }
+
+            }
+            pipeline.sync();
+
+
+
+        } finally {
+            jedis.close();
+        }
+
+    }
+
+    public static int getTagIdByTagName (String tagName) {
+        switch (tagName) {
+            case "Person:FeMale":
+                return 1;
+            case "Person:Male":
+                return 2;
+            case "Person:Unknown":
+                return 3;
+
+            case "Area:Unknown":
+                return 11;
+            case "Area:GuZhou":
+                return 12;
+            case "Area:ShangHai":
+                return 13;
+            case "Area:ShenZheng":
+                return 14;
+
+            case "Age:Unknown":
+                return 21;
+            case "Age:10-20":
+                return 22;
+            case "Age:20-30":
+                return 23;
+            case "Age:30-40":
+                return 24;
+            default:
+                return -1;
+        }
+    }
+
+    public static Match createMatchTagCondition (String tagName) {
+        Match tagCondition = new Match();
+        tagCondition.setTag( tagName );
+        tagCondition.setTagId( getTagIdByTagName(tagName) );
+        return tagCondition;
+    }
+
+
+    @Test
+    public void testGetNumOfUsersByCondition() {
+
+        TagConditionBase c1 = createMatchTagCondition( "Person:FeMale");
+        TagConditionBase c2 = createMatchTagCondition( "Area:GuZhou");
+        TagConditionBase c3 = createMatchTagCondition( "Area:ShangHai");
+        TagConditionBase tagGroup1 = c1.and( c2.or(c3) );
+
+        TagConditionBase c11 = createMatchTagCondition( "Person:Male");
+        TagConditionBase c12 = createMatchTagCondition( "Age:20-30");
+        TagConditionBase c13 = createMatchTagCondition( "Age:30-40");
+        TagConditionBase tagGroup2 = c11.and(c12.or(c13));
+
+        TagCondition tagEnd = tagGroup1.or( tagGroup2 );
+
+        TagCondition[] conditionObjs = new TagCondition[] {c1,c2, c3, c11, c12, c13, tagGroup1, tagGroup2, tagEnd };
+        long[] expectNums = new long[] { 131250, 96429, 34285, 133333, 120000, 91428, 57857, 111428, 169285 };
+
+        for(int i=0; i< conditionObjs.length; ++i) {
+            TagCondition condition = conditionObjs[i];
+            long expectNum = expectNums[i];
+            calculateAndValidateNumberOfUsersWithCondition(condition, expectNum);
+        }
+
+    }
+
+    public void calculateAndValidateNumberOfUsersWithCondition(TagCondition condition, long expectNum) {
+        long num = cacheServiceRedis.getNumOfUsersByCondition(condition);
+        logger.debug("condition: {} , count = {}", condition, num);
+
+        Assert.assertTrue( num == expectNum );
+
+        UsersDistributeByTag distributeByTag = cacheServiceRedis.getUsersDistributeByTag(condition);
+        Assert.assertTrue( distributeByTag.getTotalNumOfUsers() == expectNum );
+
+        logger.debug("####  total matchUser count: {}", distributeByTag.getTotalNumOfUsers() );
+
+        for(Map.Entry<Integer, Long> entry: distributeByTag.getTagToUserCountMap().entrySet() ) {
+            double rate = 100* entry.getValue() / num;
+            Assert.assertTrue( rate <=100 );
+            logger.debug("####  tagId:{}  , matchUser count: {} = {}%", entry.getKey(), entry.getValue(), rate);
+        }
+
+    }
+
+
+
+}
