@@ -1,9 +1,0 @@
-package com.evergrande.hdmp.sys.util;
-
-public class UserActiveInd {
-
-	public static final String ENABLE = "1";
-	
-	public static final String DISABLE = "2";
-	
-}
